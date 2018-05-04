@@ -14,6 +14,8 @@
 #define UP true
 #define DOWN false
 
+typedef std::map<std::string, moveit_msgs::CollisionObject> CollisionObjectsMap;
+
 class akit_pick_place {
 
 private:
@@ -45,6 +47,8 @@ private:
   moveit_msgs::RobotTrajectory trajectory;
   std::vector<geometry_msgs::Pose> waypoints;
   std::vector<geometry_msgs::Pose> grasp_pose_vector;
+  std::vector<moveit_msgs::CollisionObject> collision_objects_vector;
+  CollisionObjectsMap collision_objects_map;
 
   //MoveIt! stuff
   moveit::planning_interface::MoveGroupInterface *akitGroup;
@@ -56,6 +60,7 @@ private:
   std::vector<double> gripperJointPositions;
   const robot_state::JointModelGroup *akitJointModelGroup;
   const robot_state::JointModelGroup *gripperJointModelGroup;
+
 
 public:
 
@@ -95,6 +100,11 @@ public:
   bool pick(std::string object_id);
   bool place(std::string object_id);
   bool pick_place(std::string object_id);
+
+  void addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
+                               std::string cylinder_name, double cylinder_height, double cylinder_radius);
+  void addCollisionBlock(geometry_msgs::Pose block_pose,
+                               std::string block_name, double block_size);
 
 };
 

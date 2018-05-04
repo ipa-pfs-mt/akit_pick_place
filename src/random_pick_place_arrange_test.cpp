@@ -61,6 +61,7 @@ int main(int argc, char**argv){
   placeLocation1.position.y = 3.0;
   placeLocation1.orientation.x = placeLocation1.orientation.y = placeLocation1.orientation.z = 0.0;
   placeLocation1.orientation.w = 1.0;
+
   geometry_msgs::Pose placeLocation2 = placeLocation1;
   placeLocation2.position.x = 1.0;
   geometry_msgs::Pose placeLocation3 = placeLocation1;

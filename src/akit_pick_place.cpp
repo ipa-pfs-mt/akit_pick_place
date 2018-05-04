@@ -88,7 +88,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
   for (double i = step_size; i <= covered_distance; i += step_size){
        grasp_pose.position.x = (starting_point + i) * cos(yaw);
        grasp_pose.position.y = (starting_point + i) * sin(yaw);
-       grasp_pose.position.z = GRIPPER_LENGTH + block_pose_.position.z + (block_size_/2);
+       grasp_pose.position.z = GRIPPER_LENGTH + block_pose_.position.z + (block_size_/2); //divide by 2 --> center of gravity of cube
        grasp_pose.orientation.x = q[0];
        grasp_pose.orientation.y = q[1];
        grasp_pose.orientation.z = q[2];
@@ -169,6 +169,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
   }
   return true;
 }
+
 bool akit_pick_place::visualizeGrasps(){
   ROS_INFO_STREAM("---------- *Grasp Points visualization* ----------");
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
@@ -377,7 +378,7 @@ bool akit_pick_place::pick(std::string object_id){
   //attaching object to gripper
   ROS_INFO_STREAM("Attaching object to gripper");
   bool isattached = gripperGroup->attachObject(object_id);
-  ros::Duration(2.0).sleep(); //give time for planning sceene to process
+  ros::Duration(2.0).sleep(); //give time for planning scene to process
   ROS_INFO_STREAM("Attaching object to gripper:" << (isattached ? "Attached" : "FAILED"));
   if(!isattached){
     ROS_ERROR("Failed to attach object to gripper");
@@ -491,5 +492,47 @@ bool akit_pick_place::pick_place(std::string object_id){ //finalize after testin
     return false;
     exit(1);
   }
+}
+
+void akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
+                                              std::string cylinder_name, double cylinder_height, double cylinder_radius){
+  collision_objects_vector.clear();
+  moveit_msgs::CollisionObject cylinder;
+  cylinder.id = cylinder_name;
+  cylinder.header.stamp = ros::Time::now();
+  cylinder.header.frame_id = BASE_LINK;
+
+  shape_msgs::SolidPrimitive primitive;
+  primitive.type = primitive.CYLINDER;
+  primitive.dimensions.resize(2);
+  primitive.dimensions[0] = cylinder_height;
+  primitive.dimensions[1] = cylinder_radius;
+
+  cylinder.primitives.push_back(primitive);
+  cylinder.primitive_poses.push_back(cylinder_pose);
+  cylinder.operation = moveit_msgs::CollisionObject::ADD;
+
+  collision_objects_vector.push_back(cylinder);
+  planningSceneInterface.addCollisionObjects(collision_objects_vector);
+
+}
+
+void akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size){
+    collision_objects_vector.clear();
+    moveit_msgs::CollisionObject block;
+    block.id = block_name;
+    block.header.stamp = ros::Time::now();
+    block.header.frame_id = BASE_LINK;
+
+    shape_msgs::SolidPrimitive primitive;
+    primitive.type = primitive.BOX;
+    primitive.dimensions.resize(3);
+    primitive.dimensions[0] =  primitive.dimensions[1] = primitive.dimensions[2] = block_size;
+    block.primitives.push_back(primitive);
+    block.primitive_poses.push_back(block_pose);
+    block.operation = moveit_msgs::CollisionObject::ADD;
+
+    collision_objects_vector.push_back(block);
+    planningSceneInterface.addCollisionObjects(collision_objects_vector);
 }
 
