@@ -1,5 +1,4 @@
 #include <akit_pick_place/akit_pick_place.h>
-#include <moveit_visual_tools/moveit_visual_tools.h>
 
 const std::string BLOCK_NAME = "block";
 const std::string CYLINDER_NAME = "cylinder";
@@ -15,10 +14,10 @@ int main(int argc, char**argv){
   akit_pick_place akit;
 
   //std::string BASE_LINK = akit.getBaseLink();
-  //moveit::planning_interface::PlanningSceneInterface planningSceneInterface;
+  moveit::planning_interface::PlanningSceneInterface planningSceneInterface;
 
   //create collision object
- /* moveit_msgs::CollisionObject Block;
+  moveit_msgs::CollisionObject Block;
   Block.id = BLOCK_NAME;
   shape_msgs::SolidPrimitive primitive;
   primitive.type = primitive.BOX;
@@ -33,7 +32,7 @@ int main(int argc, char**argv){
   cprimitive.type = cprimitive.CYLINDER;
   cprimitive.dimensions.resize(2);
   cprimitive.dimensions[0] = CYLINDER_HEIGHT;
-  cprimitive.dimensions[1] = CYLINDER_RADIUS;*/
+  cprimitive.dimensions[1] = CYLINDER_RADIUS;
 
   //create object pose
   geometry_msgs::Pose blockPose;
@@ -48,7 +47,7 @@ int main(int argc, char**argv){
   geometry_msgs::Pose placePose = blockPose;
   placePose.position.x = 3.0;
 
-  /*Block.primitives.push_back(primitive);
+  Block.primitives.push_back(primitive);
   Block.primitive_poses.push_back(blockPose);
 
   Cylinder.primitives.push_back(cprimitive);
@@ -59,20 +58,16 @@ int main(int argc, char**argv){
   //collisionObjects.push_back(Cylinder);
   ROS_INFO_STREAM("Adding Collision object to world");
   planningSceneInterface.addCollisionObjects(collisionObjects);
-  sleep(1.0);*/
+  sleep(1.0);
 
-  akit.addCollisionCylinder(blockPose,CYLINDER_NAME,0.35,0.175);
-
-  akit.addCollisionBlock(placePose,BLOCK_NAME,0.35);
-
-  /*akit.generateGrasps(blockPose, BLOCK_SIZE);
-  akit.pick(BLOCK_NAME);*/
+  akit.generateGrasps(blockPose, BLOCK_SIZE);
+  akit.pick(BLOCK_NAME);
 
   /*akit.generateGrasps(blockPose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
   akit.pick(CYLINDER_NAME);*/
 
-  /*akit.generateGrasps(placePose, BLOCK_SIZE);
-  akit.place(BLOCK_NAME);*/
+  akit.generateGrasps(placePose, BLOCK_SIZE);
+  akit.place(BLOCK_NAME);
 
   /*akit.generateGrasps(placePose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
   akit.place(CYLINDER_NAME);*/

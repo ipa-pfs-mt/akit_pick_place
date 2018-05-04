@@ -18,6 +18,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup(eef_group_);
   gripperState = gripperGroup->getCurrentState();
   gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
+  server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
 }
 
 akit_pick_place::akit_pick_place(){
@@ -36,6 +37,7 @@ akit_pick_place::akit_pick_place(){
   gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup("gripper");
   gripperState = gripperGroup->getCurrentState();
   gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
+  server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
 }
 akit_pick_place::~akit_pick_place(){
 }
@@ -493,15 +495,16 @@ bool akit_pick_place::pick_place(std::string object_id){ //finalize after testin
     exit(1);
   }
 }
+//-----------------------------world interaction methods------------------------------
 
 void akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
                                               std::string cylinder_name, double cylinder_height, double cylinder_radius){
-  collision_objects_vector.clear();
+  collision_objects_vector.clear(); //avoid re-addition of same object
   moveit_msgs::CollisionObject cylinder;
   cylinder.id = cylinder_name;
   cylinder.header.stamp = ros::Time::now();
   cylinder.header.frame_id = BASE_LINK;
-
+  //primitives
   shape_msgs::SolidPrimitive primitive;
   primitive.type = primitive.CYLINDER;
   primitive.dimensions.resize(2);
@@ -518,21 +521,73 @@ void akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
 }
 
 void akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size){
-    collision_objects_vector.clear();
+    collision_objects_vector.clear(); //avoid re-addition of same object
     moveit_msgs::CollisionObject block;
     block.id = block_name;
     block.header.stamp = ros::Time::now();
     block.header.frame_id = BASE_LINK;
-
+    //primitives
     shape_msgs::SolidPrimitive primitive;
     primitive.type = primitive.BOX;
     primitive.dimensions.resize(3);
-    primitive.dimensions[0] =  primitive.dimensions[1] = primitive.dimensions[2] = block_size;
+    primitive.dimensions[0] = primitive.dimensions[1] = primitive.dimensions[2] = block_size;
     block.primitives.push_back(primitive);
     block.primitive_poses.push_back(block_pose);
     block.operation = moveit_msgs::CollisionObject::ADD;
 
     collision_objects_vector.push_back(block);
     planningSceneInterface.addCollisionObjects(collision_objects_vector);
+}
+
+void akit_pick_place::processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
+//--> integrate with pick
+  if(feedback->MOUSE_DOWN){
+    ROS_INFO_STREAM(feedback->marker_name << " is now at "<<
+                    feedback->pose.position.x << ", " <<
+                    feedback->pose.position.y << ", " <<
+                    feedback->pose.position.z);
+  }
+
+}
+
+void akit_pick_place::addInteractiveMarker(geometry_msgs::Pose marker_position, std::string marker_name){
+    int_marker.header.frame_id = BASE_LINK;
+    int_marker.pose.position = marker_position.position;
+    int_marker.pose.orientation = marker_position.orientation;
+    int_marker.scale = 1;
+
+    int_marker.name = marker_name;
+    visualization_msgs::Marker marker; // create an interactive marker for our server
+
+    //create a grey sphere marker
+    marker.type = visualization_msgs::Marker::SPHERE; //test cube || sphere with different shapes
+    marker.scale.x = int_marker.scale * 0.80;
+    marker.scale.y = int_marker.scale * 0.80;
+    marker.scale.z = int_marker.scale * 0.80;
+    marker.color.r = 0.5; //make invisible
+    marker.color.g = 0.5;
+    marker.color.b = 0.5;
+    marker.color.a = 1.0;
+
+    // add the control to the interactive marker
+    visualization_msgs::InteractiveMarkerControl control;
+    control.always_visible = true;
+    control.markers.push_back(marker);
+    control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_3D;
+    int_marker.controls.push_back(control);
+
+    //add the interactive marker to our collection &
+    //tell the server to call processFeedback() when feedback arrives for it
+    server->insert(int_marker);
+    server->setCallback(int_marker.name, processFeedback);
+    server->applyChanges();
+}
+
+void akit_pick_place::addInteractiveMarkers(){
+  collision_objects_map = planningSceneInterface.getObjects(); //return all collision objects in planning scene
+  CollisionObjectsMap::iterator it;
+  for (it = collision_objects_map.begin(); it != collision_objects_map.end(); ++it){
+    this->addInteractiveMarker(it->second.primitive_poses[0], it->first); //add an interactive marker to all collision objects
+  }
 }
 

@@ -168,6 +168,8 @@ target_link_libraries(pick_place_test_2 ${catkin_LIBRARIES})
 add_executable(random_pick_place_arrange_test src/random_pick_place_arrange_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(random_pick_place_arrange_test ${catkin_LIBRARIES})
 
+add_executable(interactive_markers_test src/interactive_markers_test.cpp src/akit_pick_place.cpp)
+target_link_libraries(interactive_markers_test ${catkin_LIBRARIES})
 
 #############
 ## Install ##

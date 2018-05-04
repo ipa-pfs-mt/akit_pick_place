@@ -5,6 +5,7 @@
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit_msgs/CollisionObject.h>
 #include <moveit_msgs/AttachedCollisionObject.h>
+#include <interactive_markers/interactive_marker_server.h>
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_msgs/DisplayTrajectory.h>
 #include <tf/transform_datatypes.h>
@@ -61,6 +62,11 @@ private:
   const robot_state::JointModelGroup *akitJointModelGroup;
   const robot_state::JointModelGroup *gripperJointModelGroup;
 
+  //interactive markers
+  boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
+  visualization_msgs::InteractiveMarker int_marker;
+  static void processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
+  void addInteractiveMarker(geometry_msgs::Pose marker_position, std::string marker_name);
 
 public:
 
@@ -101,10 +107,9 @@ public:
   bool place(std::string object_id);
   bool pick_place(std::string object_id);
 
-  void addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
-                               std::string cylinder_name, double cylinder_height, double cylinder_radius);
-  void addCollisionBlock(geometry_msgs::Pose block_pose,
-                               std::string block_name, double block_size);
+  void addCollisionCylinder(geometry_msgs::Pose cylinder_pose,std::string cylinder_name, double cylinder_height, double cylinder_radius);
+  void addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name, double block_size);
+  void addInteractiveMarkers();
 
 };
 
