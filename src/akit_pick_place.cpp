@@ -547,7 +547,8 @@ void akit_pick_place::processFeedback(const visualization_msgs::InteractiveMarke
   if(feedback->MOUSE_DOWN){
     interactive_pose = feedback->pose;
     interactive_name = feedback->marker_name;
-    ROS_INFO_STREAM(interactive_name << " is now at "<<
+    ROS_INFO_STREAM("object to pick " <<
+                    interactive_name << " at "<<
                     interactive_pose.position.x << ", " <<
                     interactive_pose.position.y << ", " <<
                     interactive_pose.position.z);
@@ -568,10 +569,10 @@ void akit_pick_place::addInteractiveMarker(geometry_msgs::Pose marker_position, 
     marker.scale.x = int_marker.scale * 0.80;
     marker.scale.y = int_marker.scale * 0.80;
     marker.scale.z = int_marker.scale * 0.80;
-    marker.color.r = 0.5; //make invisible
+    /*marker.color.r = 0.5; //make invisible
     marker.color.g = 0.5;
     marker.color.b = 0.5;
-    marker.color.a = 1.0;
+    marker.color.a = 1.0;*/
 
     // add the control to the interactive marker
     visualization_msgs::InteractiveMarkerControl control;
@@ -593,18 +594,19 @@ void akit_pick_place::addInteractiveMarkers(){ //server
   for (it = collision_objects_map.begin(); it != collision_objects_map.end(); ++it){
     this->addInteractiveMarker(it->second.primitive_poses[0], it->first); //add an interactive marker to all collision objects
   }
-
   ros::spin();
 }
 
-bool akit_pick_place::interactive_pick(){
+bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> place_positions){
 
   marker_sub = nh.subscribe("/akit_pick_place/feedback", 10, processFeedback);
   collision_objects_map = planningSceneInterface.getObjects(); //return all collision objects in planning scene
   CollisionObjectsMap::iterator it;
-  ROS_INFO_STREAM("Please choose object to pick ");
+  AttachedCollisionObjectsMap::iterator a_it;
+  int count = 0;
 
-  while (ros::ok()){
+  while (ros::ok() && count <= place_positions.size()){
+    ROS_INFO_STREAM("Please choose object to pick ");
     boost::shared_ptr<const visualization_msgs::InteractiveMarkerFeedback> msgReceived =
                     ros::topic::waitForMessage<visualization_msgs::InteractiveMarkerFeedback>("/akit_pick_place/feedback");
     if (msgReceived){
@@ -626,7 +628,7 @@ bool akit_pick_place::interactive_pick(){
                ROS_ERROR("Failed to pick");
                return false;
                exit(1);
-             }
+              }
              break;
            }
         } else {
@@ -634,6 +636,26 @@ bool akit_pick_place::interactive_pick(){
         }
       }
     }
+  attached_collision_objects_map = planningSceneInterface.getAttachedObjects();
+  for(a_it = attached_collision_objects_map.begin();a_it != attached_collision_objects_map.end(); ++a_it){
+    if (a_it->second.object.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
+      this->generateGrasps(place_positions[count],a_it->second.object.primitives[0].dimensions[0], a_it->second.object.primitives[0].dimensions[1]);
+      if(!this->place(a_it->first)){
+        ROS_ERROR("Failed to place");
+        return false;
+        exit(1);
+      }
+    } else if (a_it->second.object.primitives[0].type == shape_msgs::SolidPrimitive::BOX){
+      this->generateGrasps(place_positions[count],a_it->second.object.primitives[0].dimensions[0]);
+      if(!this->place(a_it->first)){
+        ROS_ERROR("Failed to place");
+        return false;
+        exit(1);
+      }
+    }
+    count++;
+  }
+
   }
 
 

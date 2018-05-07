@@ -16,6 +16,7 @@
 #define DOWN false
 
 typedef std::map<std::string, moveit_msgs::CollisionObject> CollisionObjectsMap;
+typedef std::map<std::string, moveit_msgs::AttachedCollisionObject> AttachedCollisionObjectsMap;
 
 class akit_pick_place {
 
@@ -51,6 +52,7 @@ private:
   std::vector<geometry_msgs::Pose> grasp_pose_vector;
   std::vector<moveit_msgs::CollisionObject> collision_objects_vector;
   CollisionObjectsMap collision_objects_map;
+  AttachedCollisionObjectsMap attached_collision_objects_map;
   static geometry_msgs::Pose interactive_pose;
   static std::string interactive_name;
 
@@ -110,7 +112,7 @@ public:
   bool pick(std::string object_id);
   bool place(std::string object_id);
   bool pick_place(std::string object_id);
-  bool interactive_pick();
+  bool interactive_pick_place(std::vector<geometry_msgs::Pose> place_positions);
 
   void addCollisionCylinder(geometry_msgs::Pose cylinder_pose,std::string cylinder_name, double cylinder_height, double cylinder_radius);
   void addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name, double block_size);
