@@ -24,6 +24,7 @@ private:
   //ros
   ros::NodeHandle nh;
   ros::Publisher marker_pub;
+  ros::Subscriber marker_sub;
   visualization_msgs::Marker marker;
 
   //akit stuff
@@ -50,6 +51,9 @@ private:
   std::vector<geometry_msgs::Pose> grasp_pose_vector;
   std::vector<moveit_msgs::CollisionObject> collision_objects_vector;
   CollisionObjectsMap collision_objects_map;
+  static geometry_msgs::Pose interactive_pose;
+  static std::string interactive_name;
+
 
   //MoveIt! stuff
   moveit::planning_interface::MoveGroupInterface *akitGroup;
@@ -106,6 +110,7 @@ public:
   bool pick(std::string object_id);
   bool place(std::string object_id);
   bool pick_place(std::string object_id);
+  bool interactive_pick();
 
   void addCollisionCylinder(geometry_msgs::Pose cylinder_pose,std::string cylinder_name, double cylinder_height, double cylinder_radius);
   void addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name, double block_size);
