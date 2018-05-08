@@ -26,7 +26,9 @@ private:
   ros::NodeHandle nh;
   ros::Publisher marker_pub;
   ros::Subscriber marker_sub;
-  visualization_msgs::Marker marker;
+  visualization_msgs::Marker marker;   //marker for grasp points
+  visualization_msgs::Marker i_marker; // create an interactive marker for our server
+
 
   //akit stuff
   std::string BASE_LINK;

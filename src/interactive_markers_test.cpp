@@ -32,7 +32,8 @@ int main(int argc, char **argv){
   placePose.position.x = -1.0;
   akit.addCollisionCylinder(placePose,"cylinder2",CYLINDER_HEIGHT,CYLINDER_RADIUS);
 
-  sleep(2.0);
+  sleep(1.0);
+
   akit.addInteractiveMarkers();
 
 
