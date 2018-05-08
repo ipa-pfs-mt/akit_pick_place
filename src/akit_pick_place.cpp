@@ -22,6 +22,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   gripperState = gripperGroup->getCurrentState();
   gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
+  visual_tools.reset(new moveit_visual_tools::MoveItVisualTools(base_link_, "visualization_marker"));
 }
 
 akit_pick_place::akit_pick_place(){
@@ -41,6 +42,7 @@ akit_pick_place::akit_pick_place(){
   gripperState = gripperGroup->getCurrentState();
   gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
+  visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));
 }
 akit_pick_place::~akit_pick_place(){
 }
@@ -70,6 +72,14 @@ std::string akit_pick_place::getGripperGroup(){
 }
 std::string akit_pick_place::getBaseLink(){
   return BASE_LINK;
+}
+void akit_pick_place::displayTrajectory(moveit::planning_interface::MoveGroupInterface::Plan motion_plan_trajectory,
+                                               geometry_msgs::Pose published_pose_frame, std::string axis_name,
+                                               rviz_visual_tools::colors color){
+
+  visual_tools->publishAxisLabeled(published_pose_frame, axis_name , rviz_visual_tools::scales::LARGE);
+  visual_tools->publishTrajectoryLine(motion_plan_trajectory.trajectory_, akitJointModelGroup,color);
+  visual_tools->trigger();
 }
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool visualize){
@@ -326,6 +336,7 @@ bool akit_pick_place::pick(std::string object_id){
             exit(1);
         }
       } else {
+        this->displayTrajectory(MotionPlan,grasp_pose_vector[i],"pre_grasp_pose " + std::to_string(count), rviz_visual_tools::colors::LIME_GREEN);
         executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
         ROS_INFO_STREAM("Executing Motion plan: " << (executed ? "Executed" : "FAILED"));
         if (!executed){
@@ -346,6 +357,7 @@ bool akit_pick_place::pick(std::string object_id){
       return false;
       exit(1);
     } else {
+      this->displayTrajectory(MotionPlan,pre_grasp_pose,"pre_grasp_pose",rviz_visual_tools::colors::LIME_GREEN);
       executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
       ROS_INFO_STREAM("Executing Motion plan: " << (executed ? "Executed" : "FAILED"));
       if (!executed){
@@ -397,6 +409,7 @@ bool akit_pick_place::pick(std::string object_id){
     return false;
     exit(1);
   }
+  visual_tools->deleteAllMarkers();
 }
 bool akit_pick_place::place(std::string object_id){
   ROS_INFO_STREAM("---------- *Starting place routine* ----------");
@@ -418,6 +431,7 @@ bool akit_pick_place::place(std::string object_id){
             exit(1);
         }
       } else {
+        this->displayTrajectory(MotionPlan,grasp_pose_vector[i],"pre_place_pose " + std::to_string(count), rviz_visual_tools::colors::MAGENTA);
         executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
         ROS_INFO_STREAM("Executing Motion plan: " << (executed ? "Executed" : "FAILED"));
         if (!executed){
@@ -438,6 +452,7 @@ bool akit_pick_place::place(std::string object_id){
         return false;
         exit(1);
       } else {
+        this->displayTrajectory(MotionPlan,pre_place_pose,"pre_place_pose",rviz_visual_tools::colors::MAGENTA);
         executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
         ROS_INFO_STREAM("Executing Motion Plan: " << (executed ? "Executed" : "FAILED"));
         if (!executed){
@@ -482,6 +497,7 @@ bool akit_pick_place::place(std::string object_id){
     return false;
     exit(1);
   }
+  visual_tools->deleteAllMarkers();
 }
 
 bool akit_pick_place::pick_place(std::string object_id){ //finalize after testing --> works only with blender (integrate with grasp generator)
