@@ -8,6 +8,7 @@ int main(int argc, char **argv){
 
   akit_pick_place akit;
 
+  //place location vector
   std::vector<geometry_msgs::Pose> place_locations_;
   geometry_msgs::Pose placeLocation1;
   placeLocation1.position.z = 0.17;

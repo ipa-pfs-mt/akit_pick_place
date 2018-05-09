@@ -563,33 +563,35 @@ void akit_pick_place::processFeedback(const visualization_msgs::InteractiveMarke
   if(feedback->MOUSE_DOWN){
     interactive_pose = feedback->pose;
     interactive_name = feedback->marker_name;
+//    ROS_INFO_STREAM("object " << interactive_name << " is at x: "
+//                              << interactive_pose.position.x << " y: "
+//                              << interactive_pose.position.y << " z: "
+//                              << interactive_pose.position.z);
    }
 }
 
-void akit_pick_place::addInteractiveMarker(geometry_msgs::Pose marker_position, std::string marker_name){
+void akit_pick_place::addInteractiveMarker(geometry_msgs::Pose marker_position,
+                                           std::string marker_name, shape_msgs::SolidPrimitive shape){
+
+    visualization_msgs::Marker i_marker; // create an interactive marker for our server
+    visualization_msgs::InteractiveMarker int_marker;
     int_marker.header.frame_id = BASE_LINK;
     int_marker.pose.position = marker_position.position;
     int_marker.pose.orientation = marker_position.orientation;
-    int_marker.scale = 0.5;
-
     int_marker.name = marker_name;
+//    i_marker.color.r = 0.5;
+//    i_marker.color.g = 0.5;
+//    i_marker.color.b = 0.5;
+//    i_marker.color.a = 1.0;
 
-    /*if (type == shape_msgs::SolidPrimitive::BOX){ //doesn't work !! --> type never changes in visual !!
+    if (shape.type == shape_msgs::SolidPrimitive::BOX){
       i_marker.type = visualization_msgs::Marker::CUBE;
-    } else if (type == shape_msgs::SolidPrimitive::CYLINDER){
+      i_marker.scale.x = i_marker.scale.y = i_marker.scale.z = shape.dimensions[0] + 0.01; //cannot be same size as collision object, won't return feedback
+    } else if (shape.type == shape_msgs::SolidPrimitive::CYLINDER){
       i_marker.type = visualization_msgs::Marker::CYLINDER;
-    }*/
-
-    //create a grey sphere marker
-    i_marker.type = visualization_msgs::Marker::SPHERE; //test cube || sphere with different shapes
-    i_marker.scale.x = int_marker.scale;
-    i_marker.scale.y = int_marker.scale;
-    i_marker.scale.z = int_marker.scale;
-
-    /*i_marker.color.r = 0.5; //make invisible
-    i_marker.color.g = 0.5;
-    i_marker.color.b = 0.5;
-    i_marker.color.a = 1.0;*/
+      i_marker.scale.x = i_marker.scale.y = (2 * shape.dimensions[1]) + 0.01;
+      i_marker.scale.z = shape.dimensions[0] + 0.01;
+    }
 
     // add the control to the interactive marker
     visualization_msgs::InteractiveMarkerControl control;
@@ -598,8 +600,7 @@ void akit_pick_place::addInteractiveMarker(geometry_msgs::Pose marker_position, 
     control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_3D;
     int_marker.controls.push_back(control);
 
-    //add the interactive marker to our collection &
-    //tell the server to call processFeedback() when feedback arrives for it
+    //add the interactive marker to our collection & tell the server to call processFeedback() when feedback arrives for it
     server->insert(int_marker);
     server->setCallback(int_marker.name, processFeedback);
     server->applyChanges();
@@ -612,7 +613,7 @@ void akit_pick_place::addInteractiveMarkers(){ //server
       collision_objects_map = planningSceneInterface.getObjects(); //return all collision objects in planning scene
       CollisionObjectsMap::iterator it;
       for (it = collision_objects_map.begin(); it != collision_objects_map.end(); ++it){
-        this->addInteractiveMarker(it->second.primitive_poses[0], it->first);
+        this->addInteractiveMarker(it->second.primitive_poses[0], it->first, it->second.primitives[0]);
         }
         rate.sleep(); // or use ros::spin(); after removing rate&while loop --> but planning scene is not updated
     }

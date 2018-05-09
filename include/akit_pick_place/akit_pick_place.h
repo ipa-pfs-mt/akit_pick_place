@@ -6,12 +6,13 @@
 #include <moveit_msgs/CollisionObject.h>
 #include <moveit_msgs/AttachedCollisionObject.h>
 #include <interactive_markers/interactive_marker_server.h>
+#include <visualization_msgs/Marker.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_msgs/DisplayTrajectory.h>
 #include <tf/transform_datatypes.h>
 #include <tf/tf.h>
-#include <visualization_msgs/Marker.h>
+
 
 #define UP true
 #define DOWN false
@@ -28,8 +29,6 @@ private:
   ros::Publisher marker_pub;
   ros::Subscriber marker_sub;
   visualization_msgs::Marker marker;   //marker for grasp points
-  visualization_msgs::Marker i_marker; // create an interactive marker for our server
-
 
   //akit stuff
   std::string BASE_LINK;
@@ -74,9 +73,11 @@ private:
 
   //interactive markers
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
-  visualization_msgs::InteractiveMarker int_marker;
+  //visualization_msgs::Marker i_marker; // create an interactive marker for our server
+  //visualization_msgs::InteractiveMarker int_marker;
   static void processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
-  void addInteractiveMarker(geometry_msgs::Pose marker_position, std::string marker_name);
+  void addInteractiveMarker(geometry_msgs::Pose marker_position, std::string marker_name,
+                            shape_msgs::SolidPrimitive shape);
   void displayTrajectory(moveit::planning_interface::MoveGroupInterface::Plan motion_plan_trajectory,
                                geometry_msgs::Pose published_pose_frame, std::string axis_name,
                                rviz_visual_tools::colors color);
