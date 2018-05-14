@@ -296,16 +296,27 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
   const double jump_threshold = 0.0;
   const double eef_step = 0.01;
   akitGroup->setMaxVelocityScalingFactor(0.1);
-  cartesian_pose = akitGroup->getCurrentPose(EEF_PARENT_LINK).pose;
-  if (!direction){ //downwards cartesian motion
-      cartesian_pose.position.z -= GRIPPER_JAW_LENGTH;
-  } else { //upwards cartesian motion
-      cartesian_pose.position.z += GRIPPER_JAW_LENGTH;
+
+  pose_in_chassis_frame.pose = akitGroup->getCurrentPose(EEF_PARENT_LINK).pose; //chassis frame
+  pose_in_chassis_frame.header.frame_id = BASE_LINK; //pose stamped
+
+    //transform from chassis frame to quickcoupler frame
+  transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_chassis_frame, BASE_LINK, pose_in_quickcoupler_frame);
+
+  if (!direction){        //downwards cartesian motion                 //adjust motion in quickcoupler frame
+      pose_in_quickcoupler_frame.pose.position.z -= GRIPPER_JAW_LENGTH;
+  } else {                //upwards cartesian motion
+      pose_in_quickcoupler_frame.pose.position.z += GRIPPER_JAW_LENGTH;
   }
-    waypoints[0] = cartesian_pose;
-    double fraction  = akitGroup->computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
-    ROS_INFO_STREAM("Visualizing Cartesian Motion plan:  " << (fraction * 100.0) <<"%% achieved");
-    if (fraction * 100 > 50.0){
+
+  //transform back
+  transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_quickcoupler_frame, EEF_PARENT_LINK, pose_in_chassis_frame);
+
+  waypoints[0] = pose_in_chassis_frame.pose;
+  double fraction  = akitGroup->computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
+  ROS_INFO_STREAM("Visualizing Cartesian Motion plan:  " << (fraction * 100.0) <<"%% achieved");
+
+  if (fraction * 100 > 50.0){
       MotionPlan.trajectory_ = trajectory;
       ROS_INFO_STREAM("====== 3. Executing Cartesian Motion ======");
       akitSuccess = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -316,6 +327,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
       return false;
     }
 }
+
 bool akit_pick_place::pick(std::string object_id){
   ROS_INFO_STREAM("---------- *Starting pick routine* ----------");
   //move from home position to pre-grasp position
@@ -411,6 +423,7 @@ bool akit_pick_place::pick(std::string object_id){
   }
   visual_tools->deleteAllMarkers();
 }
+
 bool akit_pick_place::place(std::string object_id){
   ROS_INFO_STREAM("---------- *Starting place routine* ----------");
   //moving from post-grasp position to pre-place position
@@ -579,10 +592,10 @@ void akit_pick_place::addInteractiveMarker(geometry_msgs::Pose marker_position,
     int_marker.pose.position = marker_position.position;
     int_marker.pose.orientation = marker_position.orientation;
     int_marker.name = marker_name;
-//    i_marker.color.r = 0.5;
-//    i_marker.color.g = 0.5;
-//    i_marker.color.b = 0.5;
-//    i_marker.color.a = 1.0;
+    i_marker.color.r = 0.5;
+    i_marker.color.g = 0.5;
+    i_marker.color.b = 0.5;
+    i_marker.color.a = 1.0;
 
     if (shape.type == shape_msgs::SolidPrimitive::BOX){
       i_marker.type = visualization_msgs::Marker::CUBE;
@@ -633,7 +646,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
   AttachedCollisionObjectsMap::iterator a_it;
   int count = 0;
 
-  while (ros::ok() && count <= place_positions.size()){
+  while (ros::ok() && count < place_positions.size()){
     ROS_INFO_STREAM("Please choose object to pick ");
     //wait for user input
     boost::shared_ptr<const visualization_msgs::InteractiveMarkerFeedback> msgReceived =
@@ -687,6 +700,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
     count++;
     }
   }
+  return true;
 }
 
 

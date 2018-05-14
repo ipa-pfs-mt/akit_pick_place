@@ -29,6 +29,7 @@ private:
   ros::Publisher marker_pub;
   ros::Subscriber marker_sub;
   visualization_msgs::Marker marker;   //marker for grasp points
+  tf::TransformListener transform_listener;
 
   //akit stuff
   std::string BASE_LINK;
@@ -47,7 +48,9 @@ private:
   //akit pick & cartesian stuff
   geometry_msgs::Pose pre_grasp_pose;
   geometry_msgs::Pose pre_place_pose;
-  geometry_msgs::Pose cartesian_pose;
+  geometry_msgs::PoseStamped pose_in_chassis_frame;
+  geometry_msgs::PoseStamped pose_in_quickcoupler_frame;
+
   geometry_msgs::Pose grasp_pose;
   moveit_msgs::RobotTrajectory trajectory;
   std::vector<geometry_msgs::Pose> waypoints;
