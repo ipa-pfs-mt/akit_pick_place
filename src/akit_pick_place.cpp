@@ -5,7 +5,7 @@ std::string akit_pick_place::interactive_name;
 
 akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_group_,
                                  std::string base_link_, std::string eef_parent_link_, double gripper_length_,
-                                 double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_){
+                                 double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_, bool set_side_grasps){
   PLANNING_GROUP_NAME = planning_group_;
   EEF_GROUP = eef_group_;
   BASE_LINK = base_link_;
@@ -14,6 +14,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   GRIPPER_SIDE_LENGTH = gripper_side_length_;
   EEF_PARENT_LINK = eef_parent_link_;
   setFromGraspGenerator = set_from_grasp_generator_;
+  sideGrasps = set_side_grasps;
   waypoints = std::vector<geometry_msgs::Pose>(1);
   akitGroup = new moveit::planning_interface::MoveGroupInterface(planning_group_);
   gripperGroup = new moveit::planning_interface::MoveGroupInterface(eef_group_);
@@ -34,6 +35,7 @@ akit_pick_place::akit_pick_place(){
   GRIPPER_SIDE_LENGTH = 0.20;
   EEF_PARENT_LINK = "quickcoupler";
   setFromGraspGenerator = true;
+  sideGrasps = false;
   waypoints = std::vector<geometry_msgs::Pose>(1);
   akitGroup = new moveit::planning_interface::MoveGroupInterface("e1_complete");
   gripperGroup = new moveit::planning_interface::MoveGroupInterface("gripper");
@@ -73,6 +75,9 @@ std::string akit_pick_place::getGripperGroup(){
 std::string akit_pick_place::getBaseLink(){
   return BASE_LINK;
 }
+void akit_pick_place::activateSideGrasps(){
+  sideGrasps = true;
+}
 void akit_pick_place::displayTrajectory(moveit::planning_interface::MoveGroupInterface::Plan motion_plan_trajectory,
                                                geometry_msgs::Pose published_pose_frame, std::string axis_name,
                                                rviz_visual_tools::colors color){
@@ -84,38 +89,75 @@ void akit_pick_place::displayTrajectory(moveit::planning_interface::MoveGroupInt
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool visualize){
 
-  //create yaw angle (rotation around z-axis)
-  double yaw = atan2(block_pose_.position.y,block_pose_.position.x);
+  if (!sideGrasps){
+    //create yaw angle (rotation around z-axis)
+    double yaw = atan2(block_pose_.position.y,block_pose_.position.x);
 
-  //calculate length between base frame origin to object frame
-  double line_length = sqrt(pow(block_pose_.position.x,2)+pow(block_pose_.position.y,2));
-  double number_of_steps = 10.0;
+    //calculate length between base frame origin to object frame
+    double line_length = sqrt(pow(block_pose_.position.x,2)+pow(block_pose_.position.y,2));
+    double number_of_steps = 10.0;
 
-  //grasp distance covered = length of block hypotenuse + 2*gripper side length
-  double blockHypotenuse = sqrt(pow(block_size_,2)+pow(block_size_,2)); //improve for all positions!!
-  double covered_distance = blockHypotenuse + (2 * GRIPPER_SIDE_LENGTH);
-  double starting_point = line_length - (blockHypotenuse/2) - GRIPPER_SIDE_LENGTH;
-  double step_size = covered_distance / number_of_steps;
+    //grasp distance covered = length of block hypotenuse + 2*gripper side length
+    double blockHypotenuse = sqrt(pow(block_size_,2)+pow(block_size_,2)); //improve for all positions!!
+    double covered_distance = blockHypotenuse + (2 * GRIPPER_SIDE_LENGTH);
+    double starting_point = line_length - (blockHypotenuse/2) - GRIPPER_SIDE_LENGTH;
+    double step_size = covered_distance / number_of_steps;
 
-  //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
-  tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
-                                                               /*y-axis tested but gives bad results*/
-  for (double i = step_size; i <= covered_distance; i += step_size){
-       grasp_pose.position.x = (starting_point + i) * cos(yaw);
-       grasp_pose.position.y = (starting_point + i) * sin(yaw);
-       grasp_pose.position.z = GRIPPER_LENGTH + block_pose_.position.z + (block_size_/2); //divide by 2 --> center of gravity of cube
-       grasp_pose.orientation.x = q[0];
-       grasp_pose.orientation.y = q[1];
-       grasp_pose.orientation.z = q[2];
-       grasp_pose.orientation.w = q[3];
-       grasp_pose_vector.push_back(grasp_pose);
-     }
+    //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
+    tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
+                                                                 /*y-axis tested but gives bad results*/
+    for (double i = step_size; i <= covered_distance; i += step_size){
+         grasp_pose.position.x = (starting_point + i) * cos(yaw);
+         grasp_pose.position.y = (starting_point + i) * sin(yaw);
+         grasp_pose.position.z = GRIPPER_LENGTH + block_pose_.position.z + (block_size_/2); //divide by 2 --> center of gravity of cube
+         grasp_pose.orientation.x = q[0];
+         grasp_pose.orientation.y = q[1];
+         grasp_pose.orientation.z = q[2];
+         grasp_pose.orientation.w = q[3];
+         grasp_pose_vector.push_back(grasp_pose);
+       }
 
-   //visualization of grasp points
-  if(visualize){
-    this->visualizeGrasps();
+     //visualization of grasp points
+    if(visualize){
+      this->visualizeGrasps();
+    }
+    return true;
+
+  } else {
+    //calculate yaw angle (z-axis rotation)
+    double yaw = atan2(block_pose_.position.y,block_pose_.position.x);
+
+    double blockHypotenuse = sqrt(pow(block_size_,2)+pow(block_size_,2)+pow(block_size_,2) );
+
+    double pitch_min =  - M_PI / 3; //60 deg
+    double pitch_max = - M_PI / 9;  //20 deg
+    double angle_incr= M_PI / 90;   // step --> 3 deg --> 10 steps
+
+    double pos_pitch = M_PI / 9;    //30 deg
+    double roll = 0.0;
+    double radius = GRIPPER_LENGTH + (blockHypotenuse/2) + 0.05; //circle in xz plane tilted around z-axis --> 0.05 to avoid collision
+
+    ROS_INFO_STREAM("radius = " << radius);
+
+    for (double pitch = pitch_min; pitch <= pitch_max; pitch += angle_incr, pos_pitch += angle_incr){
+
+      tf::Quaternion q = tf::createQuaternionFromRPY(roll,pitch,yaw);
+      grasp_pose.orientation.x = q[0];
+      grasp_pose.orientation.y = q[1];
+      grasp_pose.orientation.z = q[2];
+      grasp_pose.orientation.w = q[3];
+      //semi-circle in xz-plane with a tilt around z-axis (rotation matrix)
+      grasp_pose.position.x = block_pose_.position.x - radius * cos(pos_pitch) * cos(yaw);
+      grasp_pose.position.y = block_pose_.position.y -  radius * cos(pos_pitch) * sin(yaw);
+      grasp_pose.position.z = block_pose_.position.z  + radius * sin(pos_pitch);
+      grasp_pose_vector.push_back(grasp_pose);
+    }
+    if(visualize){
+      this->visualizeGrasps();
+    }
+    return true;
   }
-  return true;
+
 }
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_, bool visualize){
@@ -154,35 +196,71 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_, bool visualize){
   //create yaw angle (rotation around z-axis)
-  double yaw = atan2(cylinder_pose_.position.y,cylinder_pose_.position.x);
+  if (!sideGrasps){
+    double yaw = atan2(cylinder_pose_.position.y,cylinder_pose_.position.x);
 
-  //calculate length between base frame origin to object frame
-  double line_length = sqrt(pow(cylinder_pose_.position.x,2)+pow(cylinder_pose_.position.y,2));
-  double number_of_steps = 10.0;
+    //calculate length between base frame origin to object frame
+    double line_length = sqrt(pow(cylinder_pose_.position.x,2)+pow(cylinder_pose_.position.y,2));
+    double number_of_steps = 10.0;
 
-  //grasp distance covered = diameter + 2*gripper side length
-  double cylinderDiameter = 2 * cylinder_radius_;
-  double covered_distance = cylinderDiameter + (2 * GRIPPER_SIDE_LENGTH);
-  double starting_point = line_length - cylinder_radius_ - GRIPPER_SIDE_LENGTH;
-  double step_size = covered_distance / number_of_steps;
+    //grasp distance covered = diameter + 2*gripper side length
+    double cylinderDiameter = 2 * cylinder_radius_;
+    double covered_distance = cylinderDiameter + (2 * GRIPPER_SIDE_LENGTH);
+    double starting_point = line_length - cylinder_radius_ - GRIPPER_SIDE_LENGTH;
+    double step_size = covered_distance / number_of_steps;
 
-  //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
-  tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
-                                                               /*y-axis tested but gives bad results*/
-  for (double i = step_size; i <= covered_distance; i += step_size){
-       grasp_pose.position.x = (starting_point + i) * cos(yaw);
-       grasp_pose.position.y = (starting_point + i) * sin(yaw);
-       grasp_pose.position.z = GRIPPER_LENGTH + cylinder_pose_.position.z + (cylinder_height_/2); //divide by 2 --> center of gravity of cylinder
-       grasp_pose.orientation.x = q[0];
-       grasp_pose.orientation.y = q[1];
-       grasp_pose.orientation.z = q[2];
-       grasp_pose.orientation.w = q[3];
-       grasp_pose_vector.push_back(grasp_pose);
-     }
-  if(visualize){
-    this->visualizeGrasps();
+    //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
+    tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
+                                                                 /*y-axis tested but gives bad results*/
+    for (double i = step_size; i <= covered_distance; i += step_size){
+         grasp_pose.position.x = (starting_point + i) * cos(yaw);
+         grasp_pose.position.y = (starting_point + i) * sin(yaw);
+         grasp_pose.position.z = GRIPPER_LENGTH + cylinder_pose_.position.z + (cylinder_height_/2); //divide by 2 --> center of gravity of cylinder
+         grasp_pose.orientation.x = q[0];
+         grasp_pose.orientation.y = q[1];
+         grasp_pose.orientation.z = q[2];
+         grasp_pose.orientation.w = q[3];
+         grasp_pose_vector.push_back(grasp_pose);
+       }
+    if(visualize){
+      this->visualizeGrasps();
+    }
+    return true;
+  } else {
+    //calculate yaw angle (z-axis rotation)
+    double yaw = atan2(cylinder_pose_.position.y,cylinder_pose_.position.x);
+
+    double cylinderInternalDiagonal = sqrt(pow(2 * cylinder_radius_,2)+pow(cylinder_height_,2));
+
+    double pitch_min =  - M_PI / 3; //60 deg
+    double pitch_max = - M_PI / 9;  //20 deg
+    double angle_incr= M_PI / 90;   // step --> 3 deg --> 10 steps
+
+    double pos_pitch = M_PI / 9;    //30 deg
+    double roll = 0.0;
+    double radius = GRIPPER_LENGTH + (cylinderInternalDiagonal/2) + 0.05; //circle in xz plane tilted around z-axis --> 0.05 to avoid collision
+
+    ROS_INFO_STREAM("radius = " << radius);
+
+    for (double pitch = pitch_min; pitch <= pitch_max; pitch += angle_incr, pos_pitch += angle_incr){
+
+      tf::Quaternion q = tf::createQuaternionFromRPY(roll,pitch,yaw);
+      grasp_pose.orientation.x = q[0];
+      grasp_pose.orientation.y = q[1];
+      grasp_pose.orientation.z = q[2];
+      grasp_pose.orientation.w = q[3];
+      //semi-circle in xz-plane with a tilt around z-axis (rotation matrix)
+      grasp_pose.position.x = cylinder_pose_.position.x - radius * cos(pos_pitch) * cos(yaw);
+      grasp_pose.position.y = cylinder_pose_.position.y -  radius * cos(pos_pitch) * sin(yaw);
+      grasp_pose.position.z = cylinder_pose_.position.z  + radius * sin(pos_pitch);
+      grasp_pose_vector.push_back(grasp_pose);
+    }
+    if(visualize){
+      this->visualizeGrasps();
+    }
+    return true;
   }
-  return true;
+
 }
 
 bool akit_pick_place::visualizeGrasps(){

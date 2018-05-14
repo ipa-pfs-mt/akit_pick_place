@@ -44,6 +44,7 @@ private:
   bool gripperSuccess;
   bool akitSuccess;
   bool setFromGraspGenerator;
+  bool sideGrasps;
 
   //akit pick & cartesian stuff
   geometry_msgs::Pose pre_grasp_pose;
@@ -90,7 +91,8 @@ public:
   //constructors
   akit_pick_place(std::string planning_group_, std::string eef_group_,
                   std::string base_link_, std::string eef_parent_link_, double gripper_length_,
-                  double gripper_jaw_length_,double gripper_side_length_, bool set_from_grasp_generator_);
+                  double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_,
+                  bool set_side_grasps);
   akit_pick_place();
   ~akit_pick_place();
 
@@ -102,6 +104,7 @@ public:
   void setBaseLink(std::string base_link_);
   void setPreGraspPose(geometry_msgs::Pose preGraspPose);
   void setPrePlacePose(geometry_msgs::Pose prePlacePose);
+  void activateSideGrasps();
 
   std::string getPlanningGroup();
   std::string getGripperGroup();
