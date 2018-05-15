@@ -32,6 +32,7 @@ private:
   tf::TransformListener transform_listener;
 
   //akit stuff
+  std::string WORLD_FRAME;
   std::string BASE_LINK;
   std::string PLANNING_GROUP_NAME;
   std::string EEF_PARENT_LINK; //last link in planning group kinematic chain "quickcoupler"
@@ -89,7 +90,7 @@ private:
 public:
 
   //constructors
-  akit_pick_place(std::string planning_group_, std::string eef_group_,
+  akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
                   std::string base_link_, std::string eef_parent_link_, double gripper_length_,
                   double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_,
                   bool set_side_grasps);

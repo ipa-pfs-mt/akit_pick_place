@@ -19,6 +19,7 @@ int main(int argc, char**argv){
   //create collision object
   moveit_msgs::CollisionObject Block;
   Block.id = BLOCK_NAME;
+  Block.header.frame_id = "odom_combined";
   shape_msgs::SolidPrimitive primitive;
   primitive.type = primitive.BOX;
   primitive.dimensions.resize(3);
@@ -28,6 +29,7 @@ int main(int argc, char**argv){
 
   moveit_msgs::CollisionObject Cylinder;
   Cylinder.id = CYLINDER_NAME;
+  Cylinder.header.frame_id = "odom_combined";
   shape_msgs::SolidPrimitive cprimitive;
   cprimitive.type = cprimitive.CYLINDER;
   cprimitive.dimensions.resize(2);
@@ -54,24 +56,24 @@ int main(int argc, char**argv){
   Cylinder.primitive_poses.push_back(blockPose);
 
   std::vector<moveit_msgs::CollisionObject> collisionObjects;
-  collisionObjects.push_back(Block);
-  //collisionObjects.push_back(Cylinder);
+  //collisionObjects.push_back(Block);
+  collisionObjects.push_back(Cylinder);
   ROS_INFO_STREAM("Adding Collision object to world");
   planningSceneInterface.addCollisionObjects(collisionObjects);
   sleep(1.0);
 
   //akit.activateSideGrasps();
-  akit.generateGrasps(blockPose, BLOCK_SIZE);
-  akit.pick(BLOCK_NAME);
+  /*akit.generateGrasps(blockPose, BLOCK_SIZE);
+  akit.pick(BLOCK_NAME);*/
 
-  /*akit.generateGrasps(blockPose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
-  akit.pick(CYLINDER_NAME);*/
+  akit.generateGrasps(blockPose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
+  akit.pick(CYLINDER_NAME);
 
-  akit.generateGrasps(placePose, BLOCK_SIZE);
-  akit.place(BLOCK_NAME);
+  /*akit.generateGrasps(placePose, BLOCK_SIZE);
+  akit.place(BLOCK_NAME);*/
 
-  /*akit.generateGrasps(placePose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
-  akit.place(CYLINDER_NAME);*/
+  akit.generateGrasps(placePose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
+  akit.place(CYLINDER_NAME);
 
   return 0;
 }

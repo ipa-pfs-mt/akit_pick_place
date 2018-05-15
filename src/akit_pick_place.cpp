@@ -3,11 +3,12 @@
 geometry_msgs::Pose akit_pick_place::interactive_pose;
 std::string akit_pick_place::interactive_name;
 
-akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_group_,
+akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
                                  std::string base_link_, std::string eef_parent_link_, double gripper_length_,
                                  double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_, bool set_side_grasps){
   PLANNING_GROUP_NAME = planning_group_;
   EEF_GROUP = eef_group_;
+  WORLD_FRAME = world_frame_;
   BASE_LINK = base_link_;
   GRIPPER_LENGTH = gripper_length_;
   GRIPPER_JAW_LENGTH = gripper_jaw_length_;
@@ -27,6 +28,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
 }
 
 akit_pick_place::akit_pick_place(){
+  WORLD_FRAME = "odom_combined";
   PLANNING_GROUP_NAME = "e1_complete";
   EEF_GROUP = "gripper";
   BASE_LINK = "chassis";
@@ -89,13 +91,22 @@ void akit_pick_place::displayTrajectory(moveit::planning_interface::MoveGroupInt
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool visualize){
 
-   //create yaw angle (rotation around z-axis)
-  double yaw = atan2(block_pose_.position.y,block_pose_.position.x);
+  geometry_msgs::PoseStamped box_in_chassis_frame,box_in_world_frame;
+
+  box_in_world_frame.pose = block_pose_;
+  box_in_world_frame.header.frame_id = WORLD_FRAME;
+
+  //transform object pose from world frame to chassis frame
+  transform_listener.waitForTransform(BASE_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1));
+  transform_listener.transformPose(BASE_LINK,ros::Time(0), box_in_world_frame, WORLD_FRAME, box_in_chassis_frame);
+
+  //create yaw angle (rotation around z-axis)
+  double yaw = atan2(box_in_chassis_frame.pose.position.y,box_in_chassis_frame.pose.position.x);
 
   if (!sideGrasps){
 
     //calculate length between base frame origin to object frame
-    double line_length = sqrt(pow(block_pose_.position.x,2)+pow(block_pose_.position.y,2));
+    double line_length = sqrt(pow(box_in_chassis_frame.pose.position.x,2)+pow(box_in_chassis_frame.pose.position.y,2));
     double number_of_steps = 10.0;
 
     //grasp distance covered = length of block hypotenuse + 2*gripper side length
@@ -108,7 +119,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
     for (double i = step_size; i <= covered_distance; i += step_size){
          grasp_pose.position.x = (starting_point + i) * cos(yaw);
          grasp_pose.position.y = (starting_point + i) * sin(yaw);
-         grasp_pose.position.z = GRIPPER_LENGTH + block_pose_.position.z + (block_size_/2); //divide by 2 --> center of gravity of cube
+         grasp_pose.position.z = GRIPPER_LENGTH + box_in_chassis_frame.pose.position.z + (block_size_/2); //divide by 2 --> center of gravity of cube
          grasp_pose.orientation.x = q[0];
          grasp_pose.orientation.y = q[1];
          grasp_pose.orientation.z = q[2];
@@ -141,9 +152,9 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
       grasp_pose.orientation.z = q[2];
       grasp_pose.orientation.w = q[3];
       //semi-circle in xz-plane with a tilt around z-axis (rotation matrix)
-      grasp_pose.position.x = block_pose_.position.x - radius * cos(pos_pitch) * cos(yaw);
-      grasp_pose.position.y = block_pose_.position.y -  radius * cos(pos_pitch) * sin(yaw);
-      grasp_pose.position.z = block_pose_.position.z  + radius * sin(pos_pitch);
+      grasp_pose.position.x = box_in_chassis_frame.pose.position.x - radius * cos(pos_pitch) * cos(yaw);
+      grasp_pose.position.y = box_in_chassis_frame.pose.position.y -  radius * cos(pos_pitch) * sin(yaw);
+      grasp_pose.position.z = box_in_chassis_frame.pose.position.z  + radius * sin(pos_pitch);
       grasp_pose_vector.push_back(grasp_pose);
     }
     if(visualize){
@@ -156,6 +167,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_, bool visualize){
 
+  //TODO : test cuboid grasp generation and complete as others
   //create yaw angle (rotation around z-axis)
   double yaw = atan2(cuboid_pose_.position.y,cuboid_pose_.position.x);
 
@@ -190,13 +202,22 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_, bool visualize){
 
+  geometry_msgs::PoseStamped cylinder_in_chassis_frame,cylinder_in_world_frame;
+
+  cylinder_in_world_frame.pose = cylinder_pose_;
+  cylinder_in_world_frame.header.frame_id = WORLD_FRAME;
+
+  //transform object pose from world frame to chassis frame
+  transform_listener.waitForTransform(BASE_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1));
+  transform_listener.transformPose(BASE_LINK,ros::Time(0), cylinder_in_world_frame, WORLD_FRAME, cylinder_in_chassis_frame);
+
   //create yaw angle (rotation around z-axis)
-  double yaw = atan2(cylinder_pose_.position.y,cylinder_pose_.position.x);
+  double yaw = atan2(cylinder_in_chassis_frame.pose.position.y,cylinder_in_chassis_frame.pose.position.x);
 
  if (!sideGrasps){
 
     //calculate length between base frame origin to object frame
-    double line_length = sqrt(pow(cylinder_pose_.position.x,2)+pow(cylinder_pose_.position.y,2));
+    double line_length = sqrt(pow(cylinder_in_chassis_frame.pose.position.x,2)+pow(cylinder_in_chassis_frame.pose.position.y,2));
     double number_of_steps = 10.0;
 
     //grasp distance covered = diameter + 2*gripper side length
@@ -209,7 +230,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     for (double i = step_size; i <= covered_distance; i += step_size){
          grasp_pose.position.x = (starting_point + i) * cos(yaw);
          grasp_pose.position.y = (starting_point + i) * sin(yaw);
-         grasp_pose.position.z = GRIPPER_LENGTH + cylinder_pose_.position.z + (cylinder_height_/2); //divide by 2 --> center of gravity of cylinder
+         grasp_pose.position.z = GRIPPER_LENGTH + cylinder_in_chassis_frame.pose.position.z + (cylinder_height_/2); //divide by 2 --> center of gravity of cylinder
          grasp_pose.orientation.x = q[0];
          grasp_pose.orientation.y = q[1];
          grasp_pose.orientation.z = q[2];
@@ -241,9 +262,9 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
       grasp_pose.orientation.z = q[2];
       grasp_pose.orientation.w = q[3];
       //semi-circle in xz-plane with a tilt around z-axis (rotation matrix)
-      grasp_pose.position.x = cylinder_pose_.position.x - radius * cos(pos_pitch) * cos(yaw);
-      grasp_pose.position.y = cylinder_pose_.position.y -  radius * cos(pos_pitch) * sin(yaw);
-      grasp_pose.position.z = cylinder_pose_.position.z  + radius * sin(pos_pitch);
+      grasp_pose.position.x = cylinder_in_chassis_frame.pose.position.x - radius * cos(pos_pitch) * cos(yaw);
+      grasp_pose.position.y = cylinder_in_chassis_frame.pose.position.y -  radius * cos(pos_pitch) * sin(yaw);
+      grasp_pose.position.z = cylinder_in_chassis_frame.pose.position.z  + radius * sin(pos_pitch);
       grasp_pose_vector.push_back(grasp_pose);
     }
     if(visualize){
@@ -257,7 +278,7 @@ bool akit_pick_place::visualizeGrasps(){
   ROS_INFO_STREAM("---------- *Grasp Points visualization* ----------");
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
   uint32_t shape = visualization_msgs::Marker::ARROW;
-  marker.header.frame_id = BASE_LINK;
+  marker.header.frame_id = BASE_LINK; //world frame ?? --> test
   marker.header.stamp = ros::Time::now();
   marker.ns = "basic_shapes";
   marker.type = shape;
@@ -366,6 +387,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
   pose_in_chassis_frame.header.frame_id = BASE_LINK; //pose stamped
 
   //transform from chassis frame to quickcoupler frame
+  transform_listener.waitForTransform(EEF_PARENT_LINK, BASE_LINK, ros::Time::now(), ros::Duration(0.1));
   transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_chassis_frame, BASE_LINK, pose_in_quickcoupler_frame);
 
   if (!direction){        //downwards cartesian motion                 //adjust motion in quickcoupler frame
@@ -375,6 +397,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
   }
 
   //transform back
+  transform_listener.waitForTransform( BASE_LINK, EEF_PARENT_LINK, ros::Time::now(), ros::Duration(0.1));
   transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_quickcoupler_frame, EEF_PARENT_LINK, pose_in_chassis_frame);
 
   waypoints[0] = pose_in_chassis_frame.pose;
@@ -598,7 +621,7 @@ void akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
   moveit_msgs::CollisionObject cylinder;
   cylinder.id = cylinder_name;
   cylinder.header.stamp = ros::Time::now();
-  cylinder.header.frame_id = BASE_LINK;
+  cylinder.header.frame_id = WORLD_FRAME;
   //primitives
   shape_msgs::SolidPrimitive primitive;
   primitive.type = primitive.CYLINDER;
@@ -620,7 +643,7 @@ void akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::str
     moveit_msgs::CollisionObject block;
     block.id = block_name;
     block.header.stamp = ros::Time::now();
-    block.header.frame_id = BASE_LINK;
+    block.header.frame_id = WORLD_FRAME;
     //primitives
     shape_msgs::SolidPrimitive primitive;
     primitive.type = primitive.BOX;
@@ -689,6 +712,8 @@ void akit_pick_place::addInteractiveMarkers(){ //server
       collision_objects_map = planningSceneInterface.getObjects(); //return all collision objects in planning scene
       CollisionObjectsMap::iterator it;
       for (it = collision_objects_map.begin(); it != collision_objects_map.end(); ++it){
+        if (it->first == "ground")
+          continue;  //skip adding an interactive marker to the ground object
         this->addInteractiveMarker(it->second.primitive_poses[0], it->first, it->second.primitives[0]);
         }
         rate.sleep(); // or use ros::spin(); after removing rate&while loop --> but planning scene is not updated
