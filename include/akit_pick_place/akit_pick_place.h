@@ -117,8 +117,8 @@ public:
   bool visualizeGrasps();
 
   //choose best grasp -->later
-  //rotate gripper body for closed gripper collisions --> later --> improve
-  // transform from base frame to world frame -->later
+  //rotate gripper body for closed gripper collisions --> later --> test
+                                                    //--> adjust rotation to take same z-orientation of object in chassis frame
 
   bool rotateGripper(bool plan_only = false);
   bool openGripper(bool plan_only = false);
@@ -130,8 +130,9 @@ public:
   bool interactive_pick_place(std::vector<geometry_msgs::Pose> place_positions);
 
   void addCollisionCylinder(geometry_msgs::Pose cylinder_pose,std::string cylinder_name, double cylinder_height, double cylinder_radius);
-  void addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name, double block_size);
+  void addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name,  double block_size_x, double block_size_y, double block_size_z);
   void addInteractiveMarkers();
+  void addGround();
 
 };
 

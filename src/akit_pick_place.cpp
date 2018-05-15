@@ -638,7 +638,7 @@ void akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
 
 }
 
-void akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size){
+void akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size_x, double block_size_y, double block_size_z ){
     collision_objects_vector.clear(); //avoid re-addition of same object
     moveit_msgs::CollisionObject block;
     block.id = block_name;
@@ -648,13 +648,28 @@ void akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::str
     shape_msgs::SolidPrimitive primitive;
     primitive.type = primitive.BOX;
     primitive.dimensions.resize(3);
-    primitive.dimensions[0] = primitive.dimensions[1] = primitive.dimensions[2] = block_size;
+    primitive.dimensions[0] = block_size_x;
+    primitive.dimensions[1] = block_size_y;
+    primitive.dimensions[2] = block_size_z;
     block.primitives.push_back(primitive);
     block.primitive_poses.push_back(block_pose);
     block.operation = moveit_msgs::CollisionObject::ADD;
 
     collision_objects_vector.push_back(block);
     planningSceneInterface.addCollisionObjects(collision_objects_vector);
+}
+//instead of position constraints --> no motion in -z direction of world frame
+void akit_pick_place::addGround(){
+  geometry_msgs::Pose groundPose;
+  groundPose.position.x = 0.0;
+  groundPose.position.y = 0.0;
+  groundPose.position.z = -0.05;
+  groundPose.orientation.x = 0.0;
+  groundPose.orientation.y = 0.0;
+  groundPose.orientation.z = 0.0;
+  groundPose.orientation.w = 1.0;
+  this->addCollisionBlock(groundPose, "ground", 10.0,10.0,0.1);
+  ros::Duration(1.0).sleep();
 }
 
 void akit_pick_place::processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){

@@ -10,6 +10,7 @@ int main(int argc, char **argv){
   ros::AsyncSpinner spinner(1);
   spinner.start();
   akit_pick_place akit;
+  akit.addGround();
 
   //create object pose
   geometry_msgs::Pose blockPose;
@@ -23,11 +24,11 @@ int main(int argc, char **argv){
   placePose.position.x = 1.0;
 
   akit.addCollisionCylinder(blockPose,"cylinder1",CYLINDER_HEIGHT,CYLINDER_RADIUS);
-  akit.addCollisionBlock(placePose,"block1",BLOCK_SIZE);
+  akit.addCollisionBlock(placePose,"block1",BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
 
   sleep(1.0);
   placePose.position.x= 0.0;
-  akit.addCollisionBlock(placePose,"block2" ,BLOCK_SIZE);
+  akit.addCollisionBlock(placePose,"block2" ,BLOCK_SIZE,BLOCK_SIZE, BLOCK_SIZE);
 
   placePose.position.x = -1.0;
   akit.addCollisionCylinder(placePose,"cylinder2",CYLINDER_HEIGHT,CYLINDER_RADIUS);
