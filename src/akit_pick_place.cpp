@@ -5,7 +5,7 @@ std::string akit_pick_place::interactive_name;
 
 akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
                                  std::string base_link_, std::string eef_parent_link_, double gripper_length_,
-                                 double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_, bool set_side_grasps){
+                                 double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_){
   PLANNING_GROUP_NAME = planning_group_;
   EEF_GROUP = eef_group_;
   WORLD_FRAME = world_frame_;
@@ -15,7 +15,6 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   GRIPPER_SIDE_LENGTH = gripper_side_length_;
   EEF_PARENT_LINK = eef_parent_link_;
   setFromGraspGenerator = set_from_grasp_generator_;
-  sideGrasps = set_side_grasps;
   waypoints = std::vector<geometry_msgs::Pose>(1);
   akitGroup = new moveit::planning_interface::MoveGroupInterface(planning_group_);
   gripperGroup = new moveit::planning_interface::MoveGroupInterface(eef_group_);
@@ -25,6 +24,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools(base_link_, "visualization_marker"));
+  side_grasps = false;
 }
 
 akit_pick_place::akit_pick_place(){
@@ -37,7 +37,7 @@ akit_pick_place::akit_pick_place(){
   GRIPPER_SIDE_LENGTH = 0.20;
   EEF_PARENT_LINK = "quickcoupler";
   setFromGraspGenerator = true;
-  sideGrasps = false;
+  side_grasps = false;
   waypoints = std::vector<geometry_msgs::Pose>(1);
   akitGroup = new moveit::planning_interface::MoveGroupInterface("e1_complete");
   gripperGroup = new moveit::planning_interface::MoveGroupInterface("gripper");
@@ -77,9 +77,7 @@ std::string akit_pick_place::getGripperGroup(){
 std::string akit_pick_place::getBaseLink(){
   return BASE_LINK;
 }
-void akit_pick_place::activateSideGrasps(){
-  sideGrasps = true;
-}
+
 void akit_pick_place::displayTrajectory(moveit::planning_interface::MoveGroupInterface::Plan motion_plan_trajectory,
                                                geometry_msgs::Pose published_pose_frame, std::string axis_name,
                                                rviz_visual_tools::colors color){
@@ -89,7 +87,7 @@ void akit_pick_place::displayTrajectory(moveit::planning_interface::MoveGroupInt
   visual_tools->trigger();
 }
 
-bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool visualize){
+bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double block_size_,bool sideGrasps, bool visualize){
 
   geometry_msgs::PoseStamped box_in_chassis_frame,box_in_world_frame;
 
@@ -97,7 +95,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
   box_in_world_frame.header.frame_id = WORLD_FRAME;
 
   //transform object pose from world frame to chassis frame
-  transform_listener.waitForTransform(BASE_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1));
+  transform_listener.waitForTransform(BASE_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
   transform_listener.transformPose(BASE_LINK,ros::Time(0), box_in_world_frame, WORLD_FRAME, box_in_chassis_frame);
 
   //create yaw angle (rotation around z-axis)
@@ -135,6 +133,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
 
   } else { //side grasps
 
+    side_grasps = true;
     double blockHypotenuse = sqrt(pow(block_size_,2)+pow(block_size_,2)+pow(block_size_,2) ); //internal diagonal of cube
     double pitch_min =  - M_PI / 3; //60 deg
     double pitch_max = - M_PI / 9;  //20 deg
@@ -165,7 +164,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
 
 }
 
-bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_, bool visualize){
+bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_, bool sideGrasps, bool visualize){
 
   //TODO : test cuboid grasp generation and complete as others
   //create yaw angle (rotation around z-axis)
@@ -187,7 +186,9 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
   for (double i = step_size; i <= covered_distance; i += step_size){
        grasp_pose.position.x = (starting_point + i) * cos(yaw);
        grasp_pose.position.y = (starting_point + i) * sin(yaw);
-       grasp_pose.position.z = GRIPPER_LENGTH + cuboid_pose_.position.z + (cuboid_z_/2); //divide by 2 --> center of gravity of cuboid
+       grasp_pose.position.z = GRIPPER_LENGTH + cuboid_pose_.position.z + (cuboid_z_/2); //test with y- and x-
+                                                                                         //as z will have problems
+                                                                                         //when orientation changes
        grasp_pose.orientation.x = q[0];
        grasp_pose.orientation.y = q[1];
        grasp_pose.orientation.z = q[2];
@@ -200,7 +201,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
   return true;
 }
 
-bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_, bool visualize){
+bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_,bool sideGrasps, bool visualize){
 
   geometry_msgs::PoseStamped cylinder_in_chassis_frame,cylinder_in_world_frame;
 
@@ -208,7 +209,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
   cylinder_in_world_frame.header.frame_id = WORLD_FRAME;
 
   //transform object pose from world frame to chassis frame
-  transform_listener.waitForTransform(BASE_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1));
+  transform_listener.waitForTransform(BASE_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
   transform_listener.transformPose(BASE_LINK,ros::Time(0), cylinder_in_world_frame, WORLD_FRAME, cylinder_in_chassis_frame);
 
   //create yaw angle (rotation around z-axis)
@@ -230,7 +231,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     for (double i = step_size; i <= covered_distance; i += step_size){
          grasp_pose.position.x = (starting_point + i) * cos(yaw);
          grasp_pose.position.y = (starting_point + i) * sin(yaw);
-         grasp_pose.position.z = GRIPPER_LENGTH + cylinder_in_chassis_frame.pose.position.z + (cylinder_height_/2); //divide by 2 --> center of gravity of cylinder
+         grasp_pose.position.z = GRIPPER_LENGTH + cylinder_in_chassis_frame.pose.position.z + (cylinder_radius_); //MATH!! --> radius < height/2
          grasp_pose.orientation.x = q[0];
          grasp_pose.orientation.y = q[1];
          grasp_pose.orientation.z = q[2];
@@ -244,8 +245,8 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
 
  } else { //side grasps
 
+    side_grasps = true;
     double cylinderInternalDiagonal = sqrt(pow(2 * cylinder_radius_,2)+pow(cylinder_height_,2));
-    //rotation around y-axis
     double pitch_min =  - M_PI / 3; //60 deg
     double pitch_max = - M_PI / 9;  //20 deg
     double angle_incr= M_PI / 90;   // step --> 2 deg --> 20 steps
@@ -303,7 +304,7 @@ bool akit_pick_place::visualizeGrasps(){
    }
 }
 bool akit_pick_place::rotateGripper(bool plan_only){
-  gripperJointPositions[0] += 0.2;
+  gripperJointPositions[0] += M_PI / 15; //gripper rotator joint
   gripperGroup->setJointValueTarget(gripperJointPositions);
   if (plan_only){
     gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -317,8 +318,30 @@ bool akit_pick_place::rotateGripper(bool plan_only){
     return (gripperSuccess ? true : false);
   }
 }
+
+bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){
+
+  geometry_msgs::PoseStamped object_in_world_frame, object_in_gripper_frame;
+  object_in_world_frame.pose = object_.primitive_poses[0];
+  object_in_world_frame.header.frame_id = object_.header.frame_id;
+
+  //transform object from world frame to gripper rotator frame
+  transform_listener.waitForTransform("gripper_rotator", WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
+  transform_listener.transformPose("gripper_rotator",ros::Time(0), object_in_world_frame, WORLD_FRAME, object_in_gripper_frame);
+
+  //get yaw between object frame and gripper frame
+  double yaw = tf::getYaw(object_in_gripper_frame.pose.orientation);
+  gripperJointPositions[0] = (M_PI/2) + yaw; //adjust signs +180 -180 ??
+  gripperGroup->setJointValueTarget(gripperJointPositions);
+
+  gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  ROS_INFO_STREAM("Visualising gripper rotation motion plan: " << (gripperSuccess ? "Planned" : "FAILED"));
+  gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Rotated gripper" : "FAILED TO ROTATE GRIPPER"));
+  return (gripperSuccess ? true : false);
+ }
+
 bool akit_pick_place::openGripper(bool plan_only){
-  //gripperJointPositions[0] = 0.0;
   gripperJointPositions[1] = 1.0; //fixed
   gripperJointPositions[2] = 1.0;
   gripperGroup->setJointValueTarget(gripperJointPositions);
@@ -335,15 +358,14 @@ bool akit_pick_place::openGripper(bool plan_only){
   }
 }
 bool akit_pick_place::closeGripper(bool plan_only){
-  gripperJointPositions[0] = 0.0;
-  gripperJointPositions[1] = 0.7; //relate to object size (perception) --> later
+  gripperJointPositions[1] = 0.7;
   gripperJointPositions[2] = 0.7;
   gripperGroup->setJointValueTarget(gripperJointPositions); //
   int count = 0.0;
   if (plan_only){
     gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
     while (!gripperSuccess){
-      ROS_INFO_STREAM("Failed to close Gripper --> rotating Gripper");
+      ROS_INFO_STREAM("Failed to close Gripper --> rotating Gripper"); //remove later if orientation problem is solved!
       this->rotateGripper();
       gripperJointPositions[1] = 0.7;
       gripperJointPositions[2] = 0.7;
@@ -378,6 +400,7 @@ bool akit_pick_place::closeGripper(bool plan_only){
 bool akit_pick_place::executeCartesianMotion(bool direction){
 
   //UP = true, DOWN = false
+  geometry_msgs::PoseStamped pose_in_chassis_frame, pose_in_quickcoupler_frame;
 
   const double jump_threshold = 0.0;
   const double eef_step = 0.01;
@@ -387,7 +410,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
   pose_in_chassis_frame.header.frame_id = BASE_LINK; //pose stamped
 
   //transform from chassis frame to quickcoupler frame
-  transform_listener.waitForTransform(EEF_PARENT_LINK, BASE_LINK, ros::Time::now(), ros::Duration(0.1));
+  transform_listener.waitForTransform(EEF_PARENT_LINK, BASE_LINK, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
   transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_chassis_frame, BASE_LINK, pose_in_quickcoupler_frame);
 
   if (!direction){        //downwards cartesian motion                 //adjust motion in quickcoupler frame
@@ -397,14 +420,14 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
   }
 
   //transform back
-  transform_listener.waitForTransform( BASE_LINK, EEF_PARENT_LINK, ros::Time::now(), ros::Duration(0.1));
+  transform_listener.waitForTransform( BASE_LINK, EEF_PARENT_LINK, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
   transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_quickcoupler_frame, EEF_PARENT_LINK, pose_in_chassis_frame);
 
   waypoints[0] = pose_in_chassis_frame.pose;
   double fraction  = akitGroup->computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
   ROS_INFO_STREAM("Visualizing Cartesian Motion plan:  " << (fraction * 100.0) <<"%% achieved");
 
-  if (fraction * 100 > 50.0){
+  if (fraction * 100 > 40.0){ //adjust
       MotionPlan.trajectory_ = trajectory;
       ROS_INFO_STREAM("====== 3. Executing Cartesian Motion ======");
       akitSuccess = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -416,7 +439,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
     }
 }
 
-bool akit_pick_place::pick(std::string object_id){
+bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   ROS_INFO_STREAM("---------- *Starting pick routine* ----------");
   //move from home position to pre-grasp position
 
@@ -448,7 +471,7 @@ bool akit_pick_place::pick(std::string object_id){
         }
       }
     }
-  } else { //if grasp poses are entered from blender (remove later if not needed)
+  } else { //if grasp poses are entered from blender (remove later if not needed--> needed if object is not a box,cuboid,cylinder!)
     akitGroup->setPoseTarget(pre_grasp_pose); //make setters to bool
     akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
     ROS_INFO_STREAM("Motion Planning to Pre-Grasp Position: " << (akitSuccess ? "Planned" : "FAILED"));
@@ -478,6 +501,14 @@ bool akit_pick_place::pick(std::string object_id){
    exit(1);
   }
 
+  if (!side_grasps){   //rotating gripper to adjust with different orientations (only works with top grasping)
+     if (!this->rotateGripper(object_)){
+     ROS_ERROR("Failed to rotate Gripper");
+     return false;
+     exit(1);
+    }
+}
+
   //cartesian motion downwards
   if (!this->executeCartesianMotion(DOWN)){
     ROS_ERROR("Failed to execute downwards cartesian motion");
@@ -493,7 +524,7 @@ bool akit_pick_place::pick(std::string object_id){
   }
 
   //attaching object to gripper
-  bool isattached = gripperGroup->attachObject(object_id);
+  bool isattached = gripperGroup->attachObject(object_.id);
   ros::Duration(2.0).sleep(); //give time for planning scene to process
   ROS_INFO_STREAM("Attaching object to gripper: " << (isattached ? "Attached" : "FAILED"));
   if(!isattached){
@@ -511,7 +542,7 @@ bool akit_pick_place::pick(std::string object_id){
   visual_tools->deleteAllMarkers();
 }
 
-bool akit_pick_place::place(std::string object_id){
+bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   ROS_INFO_STREAM("---------- *Starting place routine* ----------");
   //moving from post-grasp position to pre-place position
 
@@ -543,7 +574,7 @@ bool akit_pick_place::place(std::string object_id){
         }
       }
     }
-  } else { //if place poses are entered from blender (remove later if not needed)
+  } else { //if place poses are entered from blender (remove later if not needed --> needed if object is not a box,cuboid,cylinder!)
       akitGroup->setPoseTarget(pre_place_pose);
       akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
       ROS_INFO_STREAM("Motion Planning to Pre-Place Position: " << (akitSuccess ? "Planned" : "FAILED"));
@@ -574,7 +605,7 @@ bool akit_pick_place::place(std::string object_id){
   }
 
   //detach object from gripper
-  bool isdetached = gripperGroup->detachObject(object_id);
+  bool isdetached = gripperGroup->detachObject(object_.id);
   ros::Duration(1.0).sleep();
   ROS_INFO_STREAM("Detaching object from gripper: " << (isdetached ? "Detached" : "FAILED"));
   if(!isdetached){
@@ -599,15 +630,15 @@ bool akit_pick_place::place(std::string object_id){
   visual_tools->deleteAllMarkers();
 }
 
-bool akit_pick_place::pick_place(std::string object_id){ //finalize after testing --> works only with blender (integrate with grasp generator)
+bool akit_pick_place::pick_place(moveit_msgs::CollisionObject object_){ //finalize after testing --> works only with blender (integrate with grasp generator)
   //calling pick method
-  if(!this->pick(object_id)){
+  if(!this->pick(object_)){
     ROS_ERROR("Failed to pick");
     return false;
     exit(1);
   }
   //calling place method
-  if(!this->place(object_id)){
+  if(!this->place(object_)){
     ROS_ERROR("Failed to place");
     return false;
     exit(1);
@@ -615,7 +646,7 @@ bool akit_pick_place::pick_place(std::string object_id){ //finalize after testin
 }
 //-----------------------------world interaction methods------------------------------
 
-void akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
+moveit_msgs::CollisionObject akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
                                               std::string cylinder_name, double cylinder_height, double cylinder_radius){
   collision_objects_vector.clear(); //avoid re-addition of same object
   moveit_msgs::CollisionObject cylinder;
@@ -635,10 +666,11 @@ void akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
 
   collision_objects_vector.push_back(cylinder);
   planningSceneInterface.addCollisionObjects(collision_objects_vector);
+  return cylinder;
 
 }
 
-void akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size_x, double block_size_y, double block_size_z ){
+moveit_msgs::CollisionObject akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size_x, double block_size_y, double block_size_z ){
     collision_objects_vector.clear(); //avoid re-addition of same object
     moveit_msgs::CollisionObject block;
     block.id = block_name;
@@ -657,6 +689,7 @@ void akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::str
 
     collision_objects_vector.push_back(block);
     planningSceneInterface.addCollisionObjects(collision_objects_vector);
+    return block;
 }
 //instead of position constraints --> no motion in -z direction of world frame
 void akit_pick_place::addGround(){
@@ -761,7 +794,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
          if (interactive_name == it->first){
           if (it->second.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
              this->generateGrasps(interactive_pose, it->second.primitives[0].dimensions[0], it->second.primitives[0].dimensions[1]);
-             if(!this->pick(interactive_name)){
+             if(!this->pick(it->second)){
                ROS_ERROR("Failed to pick");
                return false;
                exit(1);
@@ -769,7 +802,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
              break;
           } else if (it->second.primitives[0].type == shape_msgs::SolidPrimitive::BOX){
              this->generateGrasps(interactive_pose, it->second.primitives[0].dimensions[0]);
-             if (!this->pick(interactive_name)){
+             if (!this->pick(it->second)){
                ROS_ERROR("Failed to pick");
                return false;
                exit(1);
@@ -787,14 +820,14 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
   for(a_it = attached_collision_objects_map.begin();a_it != attached_collision_objects_map.end(); ++a_it){
     if (a_it->second.object.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
       this->generateGrasps(place_positions[count],a_it->second.object.primitives[0].dimensions[0], a_it->second.object.primitives[0].dimensions[1]);
-      if(!this->place(a_it->first)){
+      if(!this->place(a_it->second.object)){
         ROS_ERROR("Failed to place");
         return false;
         exit(1);
       }
     } else if (a_it->second.object.primitives[0].type == shape_msgs::SolidPrimitive::BOX){
       this->generateGrasps(place_positions[count],a_it->second.object.primitives[0].dimensions[0]);
-      if(!this->place(a_it->first)){
+      if(!this->place(a_it->second.object)){
         ROS_ERROR("Failed to place");
         return false;
         exit(1);

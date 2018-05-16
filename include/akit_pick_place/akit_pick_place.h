@@ -45,14 +45,11 @@ private:
   bool gripperSuccess;
   bool akitSuccess;
   bool setFromGraspGenerator;
-  bool sideGrasps;
+  bool side_grasps;
 
   //akit pick & cartesian stuff
   geometry_msgs::Pose pre_grasp_pose;
   geometry_msgs::Pose pre_place_pose;
-  geometry_msgs::PoseStamped pose_in_chassis_frame;
-  geometry_msgs::PoseStamped pose_in_quickcoupler_frame;
-
   geometry_msgs::Pose grasp_pose;
   moveit_msgs::RobotTrajectory trajectory;
   std::vector<geometry_msgs::Pose> waypoints;
@@ -78,11 +75,8 @@ private:
 
   //interactive markers
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
-  //visualization_msgs::Marker i_marker; // create an interactive marker for our server
-  //visualization_msgs::InteractiveMarker int_marker;
   static void processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
-  void addInteractiveMarker(geometry_msgs::Pose marker_position, std::string marker_name,
-                            shape_msgs::SolidPrimitive shape);
+  void addInteractiveMarker(geometry_msgs::Pose marker_position, std::string marker_name,shape_msgs::SolidPrimitive shape);
   void displayTrajectory(moveit::planning_interface::MoveGroupInterface::Plan motion_plan_trajectory,
                                geometry_msgs::Pose published_pose_frame, std::string axis_name,
                                rviz_visual_tools::colors color);
@@ -92,8 +86,7 @@ public:
   //constructors
   akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
                   std::string base_link_, std::string eef_parent_link_, double gripper_length_,
-                  double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_,
-                  bool set_side_grasps);
+                  double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_);
   akit_pick_place();
   ~akit_pick_place();
 
@@ -105,32 +98,31 @@ public:
   void setBaseLink(std::string base_link_);
   void setPreGraspPose(geometry_msgs::Pose preGraspPose);
   void setPrePlacePose(geometry_msgs::Pose prePlacePose);
-  void activateSideGrasps();
 
   std::string getPlanningGroup();
   std::string getGripperGroup();
   std::string getBaseLink();
 
-  bool generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool visualize = true);
-  bool generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_, bool visualize = true);
-  bool generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_, bool visualize = true);
+  bool generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool sideGrasps = false, bool visualize = true);
+  bool generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_,bool sideGrasps = false, bool visualize = true);
+  bool generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_,bool sideGrasps = false, bool visualize = true);
   bool visualizeGrasps();
 
   //choose best grasp -->later
   //rotate gripper body for closed gripper collisions --> later --> test
                                                     //--> adjust rotation to take same z-orientation of object in chassis frame
-
   bool rotateGripper(bool plan_only = false);
+  bool rotateGripper(moveit_msgs::CollisionObject object_);
   bool openGripper(bool plan_only = false);
   bool closeGripper(bool plan_only = false);
   bool executeCartesianMotion(bool direction);
-  bool pick(std::string object_id);
-  bool place(std::string object_id);
-  bool pick_place(std::string object_id);
+  bool pick(moveit_msgs::CollisionObject object_);
+  bool place(moveit_msgs::CollisionObject object_);
+  bool pick_place(moveit_msgs::CollisionObject object_);
   bool interactive_pick_place(std::vector<geometry_msgs::Pose> place_positions);
 
-  void addCollisionCylinder(geometry_msgs::Pose cylinder_pose,std::string cylinder_name, double cylinder_height, double cylinder_radius);
-  void addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name,  double block_size_x, double block_size_y, double block_size_z);
+  moveit_msgs::CollisionObject addCollisionCylinder(geometry_msgs::Pose cylinder_pose,std::string cylinder_name, double cylinder_height, double cylinder_radius);
+  moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name,  double block_size_x, double block_size_y, double block_size_z);
   void addInteractiveMarkers();
   void addGround();
 

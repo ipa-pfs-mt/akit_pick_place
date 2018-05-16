@@ -101,12 +101,12 @@ int main(int argc, char**argv){
     planningSceneInterface.addCollisionObjects(collisionObjects);
 
     akit.generateGrasps(cylinder_pose, CYLINDER_HEIGHT, CYLINDER_RADIUS);
-    if(!akit.pick(cylinder.id)){
+    if(!akit.pick(cylinder)){
       ROS_ERROR("Failed to pick");
       continue;
     } else {
        akit.generateGrasps(place_locations_[i], CYLINDER_HEIGHT, CYLINDER_RADIUS);
-       if (!akit.place(cylinder.id)){
+       if (!akit.place(cylinder)){
          ROS_ERROR("Failed to place");
          continue;
        }

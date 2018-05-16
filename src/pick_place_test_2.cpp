@@ -102,7 +102,7 @@ int main(int argc, char**argv){
 
   akit.setPreGraspPose(block1pick);
   akit.setPrePlacePose(block1place);
-  akit.pick_place(Block1.id);
+  akit.pick_place(Block1);
 
   /*------------------------------------------------------------------------------------------------------*/
   //create pre-grasp pose from blender --> block2 pick
@@ -127,7 +127,7 @@ int main(int argc, char**argv){
 
   akit.setPreGraspPose(block2pick);
   akit.setPrePlacePose(block2place);
-  akit.pick_place(Block2.id);
+  akit.pick_place(Block2);
 
   /*------------------------------------------------------------------------------------------------------*/
   //create pre-grasp pose from blender --> block3 pick
@@ -152,7 +152,7 @@ int main(int argc, char**argv){
 
   akit.setPreGraspPose(block3pick);
   akit.setPrePlacePose(block3place);
-  akit.pick_place(Block3.id);
+  akit.pick_place(Block3);
 
   /*------------------------------------------------------------------------------------------------------*/
   //create pre-grasp pose from blender --> block4 pick
@@ -177,7 +177,7 @@ int main(int argc, char**argv){
 
   akit.setPreGraspPose(block4pick);
   akit.setPrePlacePose(block4place);
-  akit.pick_place(Block4.id);
+  akit.pick_place(Block4);
 
   /*------------------------------------------------------------------------------------------------------*/
   //create pre-grasp pose from blender --> block5 pick
@@ -202,7 +202,7 @@ int main(int argc, char**argv){
 
   akit.setPreGraspPose(block5pick);
   akit.setPrePlacePose(block5place);
-  akit.pick_place(Block5.id);
+  akit.pick_place(Block5);
 
   return 0;
 }

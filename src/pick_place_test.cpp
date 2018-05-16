@@ -41,8 +41,8 @@ int main(int argc, char**argv){
   blockPose.position.x = -3.0;
   blockPose.position.y = 2.0;
   blockPose.position.z = 0.17;
-  blockPose.orientation.x = 0;
-  blockPose.orientation.y = 0;
+  blockPose.orientation.x = 0.0;
+  blockPose.orientation.y = 0.0;
   blockPose.orientation.z = 0.0;
   blockPose.orientation.w = 1.0;
 
@@ -62,18 +62,17 @@ int main(int argc, char**argv){
   planningSceneInterface.addCollisionObjects(collisionObjects);
   sleep(1.0);
 
-  //akit.activateSideGrasps();
   /*akit.generateGrasps(blockPose, BLOCK_SIZE);
   akit.pick(BLOCK_NAME);*/
 
   akit.generateGrasps(blockPose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
-  akit.pick(CYLINDER_NAME);
+  akit.pick(Cylinder);
 
   /*akit.generateGrasps(placePose, BLOCK_SIZE);
   akit.place(BLOCK_NAME);*/
 
   akit.generateGrasps(placePose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
-  akit.place(CYLINDER_NAME);
+  akit.place(Cylinder);
 
   return 0;
 }
