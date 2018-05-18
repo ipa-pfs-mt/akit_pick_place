@@ -111,10 +111,10 @@ public:
   //choose best grasp -->later
   //rotate gripper body for closed gripper collisions --> later --> test
                                                     //--> adjust rotation to take same z-orientation of object in chassis frame
-  bool rotateGripper(bool plan_only = false);
+  bool rotateGripper();
   bool rotateGripper(moveit_msgs::CollisionObject object_);
-  bool openGripper(bool plan_only = false);
-  bool closeGripper(bool plan_only = false);
+  bool openGripper();
+  bool closeGripper();
   bool executeCartesianMotion(bool direction);
   bool pick(moveit_msgs::CollisionObject object_);
   bool place(moveit_msgs::CollisionObject object_);

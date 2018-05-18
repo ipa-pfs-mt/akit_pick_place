@@ -1,6 +1,6 @@
 #include <akit_pick_place/akit_pick_place.h>
 
-double CYLINDER_HEIGHT = 0.50;
+double CYLINDER_HEIGHT = 0.70;
 double CYLINDER_RADIUS = 0.175;
 double BLOCK_SIZE = 0.35;
 
@@ -16,10 +16,10 @@ int main(int argc, char **argv){
   barrelPose.position.x = 3.0;
   barrelPose.position.y = -2.0;
   barrelPose.position.z = 0.25;
-  barrelPose.orientation.w = 0.685;
-  barrelPose.orientation.x = 0.693;
-  barrelPose.orientation.y = -0.159;
-  barrelPose.orientation.z = -0.158;
+  barrelPose.orientation.w = 0.889;
+  barrelPose.orientation.x = 0.115;
+  barrelPose.orientation.y = 0.282;
+  barrelPose.orientation.z = 0.342;
 
   //barrel place position
   geometry_msgs::Pose barrelPlace = barrelPose;

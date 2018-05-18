@@ -166,43 +166,110 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_, bool sideGrasps, bool visualize){
 
-  //TODO : test cuboid grasp generation and complete as others
-  //create yaw angle (rotation around z-axis)
-  double yaw = atan2(cuboid_pose_.position.y,cuboid_pose_.position.x);
+  //calculate roll,pitch,yaw of the object relative to the world frame
+  tf::Quaternion qq(cuboid_pose_.orientation.x, cuboid_pose_.orientation.y,cuboid_pose_.orientation.z, cuboid_pose_.orientation.w);
+  tf::Matrix3x3 m(qq);
+  double roll_, pitch_, yaw_;
+  m.getRPY(roll_, pitch_, yaw_);
 
-  //calculate length between base frame origin to object frame
-  double line_length = sqrt(pow(cuboid_pose_.position.x,2)+pow(cuboid_pose_.position.y,2));
-  double number_of_steps = 10.0;
+  //calculate roll,pitch,yaw of the object relative to the world frame
+  geometry_msgs::PoseStamped cuboid_in_chassis_frame,cuboid_in_world_frame;
 
-  //grasp distance covered = length of cuboid hypotenuse + 2*gripper_side_length
-  double cuboidHypotenuse = sqrt(pow(cuboid_x_,2)+pow(cuboid_y_,2));
-  double covered_distance = cuboidHypotenuse + (2 * GRIPPER_SIDE_LENGTH);
-  double starting_point = line_length - (cuboidHypotenuse/2) - GRIPPER_SIDE_LENGTH;
-  double step_size = covered_distance / number_of_steps;
+  cuboid_in_world_frame.pose = cuboid_pose_;
+  cuboid_in_world_frame.header.frame_id = WORLD_FRAME;
 
-  //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
-  tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
-                                                               /*y-axis tested but gives bad results*/
-  for (double i = step_size; i <= covered_distance; i += step_size){
-       grasp_pose.position.x = (starting_point + i) * cos(yaw);
-       grasp_pose.position.y = (starting_point + i) * sin(yaw);
-       grasp_pose.position.z = GRIPPER_LENGTH + cuboid_pose_.position.z + (cuboid_z_/2); //test with y- and x-
-                                                                                         //as z will have problems
-                                                                                         //when orientation changes
-       grasp_pose.orientation.x = q[0];
-       grasp_pose.orientation.y = q[1];
-       grasp_pose.orientation.z = q[2];
-       grasp_pose.orientation.w = q[3];
-       grasp_pose_vector.push_back(grasp_pose);
-     }
-  if(visualize){
-    this->visualizeGrasps();
+  //transform object pose from world frame to chassis frame
+  transform_listener.waitForTransform(BASE_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+  transform_listener.transformPose(BASE_LINK,ros::Time(0), cuboid_in_world_frame, WORLD_FRAME, cuboid_in_chassis_frame);
+
+  //create yaw angle (rotation around z-axis) of Grasp points
+  double yaw = atan2(cuboid_in_chassis_frame.pose.position.y,cuboid_in_chassis_frame.pose.position.x);
+  double cuboidDiagonal = sqrt(pow(cuboid_x_,2)+pow(cuboid_z_,2));
+
+  if(!sideGrasps){
+
+    //calculate length between base frame origin to object frame
+    double line_length = sqrt(pow(cuboid_in_chassis_frame.pose.position.x,2)+pow(cuboid_in_chassis_frame.pose.position.y,2));
+    double number_of_steps = 10.0;
+
+    //grasp distance covered = length of cuboid hypotenuse + 2*gripper_side_length
+    double cuboidHypotenuse = sqrt(pow(cuboid_x_,2)+pow(cuboid_y_,2));
+    double covered_distance = cuboidHypotenuse + (2 * GRIPPER_SIDE_LENGTH);
+    double starting_point = line_length - (cuboidHypotenuse/2) - GRIPPER_SIDE_LENGTH;
+    double step_size = covered_distance / number_of_steps;
+
+    //testing if the orientation of the object is greater or lower than 45deg
+    double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
+
+    //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
+    tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
+    for (double i = step_size; i <= covered_distance; i += step_size){
+
+
+      /*if the object's orientation in roll or pitch is between -45deg and 45deg
+       *then the added distance is the cuboidDiagonal/2
+       *if the orientation is outside this range then added distance is the cuboidHypotenuse/2 */
+
+      if(test >= sin(M_PI/4)){
+        grasp_pose.position.z = GRIPPER_LENGTH + cuboid_in_chassis_frame.pose.position.z + (cuboidDiagonal/2);
+      } else if (test <= sin(M_PI/4)){
+        grasp_pose.position.z = GRIPPER_LENGTH + cuboid_in_chassis_frame.pose.position.z + (cuboidHypotenuse/2);
+      }
+      grasp_pose.position.x = (starting_point + i) * cos(yaw);
+      grasp_pose.position.y = (starting_point + i) * sin(yaw);
+      grasp_pose.orientation.x = q[0];
+      grasp_pose.orientation.y = q[1];
+      grasp_pose.orientation.z = q[2];
+      grasp_pose.orientation.w = q[3];
+      grasp_pose_vector.push_back(grasp_pose);
+
+      }
+
+    if(visualize){
+      this->visualizeGrasps();
+    }
+    return true;
+  } else { //side grasps
+
+    side_grasps = true;
+    double pitch_min = - M_PI / 3; //60 deg
+    double pitch_max = - M_PI / 9;  //20 deg
+    double angle_incr= M_PI / 90;   // step --> 2 deg --> 20 steps
+
+    double pos_pitch = M_PI / 9;    //20 deg
+    double roll = 0.0; //fix rotation around x-axis to zero
+    double radius = GRIPPER_LENGTH + (cuboidDiagonal/2) + 0.05; //make a circle in xz plane tilted around z-axis
+                                                                          //0.05 to avoid collision
+    for (double pitch = pitch_min; pitch <= pitch_max; pitch += angle_incr, pos_pitch += angle_incr){
+
+      tf::Quaternion q = tf::createQuaternionFromRPY(roll,pitch,yaw);
+      grasp_pose.orientation.x = q[0];
+      grasp_pose.orientation.y = q[1];
+      grasp_pose.orientation.z = q[2];
+      grasp_pose.orientation.w = q[3];
+      //semi-circle in xz-plane with a tilt around z-axis (rotation matrix)
+      grasp_pose.position.x = cuboid_in_chassis_frame.pose.position.x - radius * cos(pos_pitch) * cos(yaw);
+      grasp_pose.position.y = cuboid_in_chassis_frame.pose.position.y -  radius * cos(pos_pitch) * sin(yaw);
+      grasp_pose.position.z = cuboid_in_chassis_frame.pose.position.z  + radius * sin(pos_pitch);
+      grasp_pose_vector.push_back(grasp_pose);
+    }
+    if(visualize){
+      this->visualizeGrasps();
+    }
+    return true;
   }
-  return true;
+
 }
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_,bool sideGrasps, bool visualize){
 
+  //calculate roll,pitch,yaw of the object relative to the world frame
+  tf::Quaternion qq(cylinder_pose_.orientation.x, cylinder_pose_.orientation.y,cylinder_pose_.orientation.z, cylinder_pose_.orientation.w);
+  tf::Matrix3x3 m(qq);
+  double roll_, pitch_, yaw_;
+  m.getRPY(roll_, pitch_, yaw_);
+
+  //transformation to base_link (chassis frame)
   geometry_msgs::PoseStamped cylinder_in_chassis_frame,cylinder_in_world_frame;
 
   cylinder_in_world_frame.pose = cylinder_pose_;
@@ -212,8 +279,9 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
   transform_listener.waitForTransform(BASE_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
   transform_listener.transformPose(BASE_LINK,ros::Time(0), cylinder_in_world_frame, WORLD_FRAME, cylinder_in_chassis_frame);
 
-  //create yaw angle (rotation around z-axis)
+  //create yaw angle (rotation around z-axis) of grasp points
   double yaw = atan2(cylinder_in_chassis_frame.pose.position.y,cylinder_in_chassis_frame.pose.position.x);
+  double cylinderInternalDiagonal = sqrt(pow(2 * cylinder_radius_,2)+pow(cylinder_height_,2));
 
  if (!sideGrasps){
 
@@ -227,17 +295,31 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     double starting_point = line_length - cylinder_radius_ - GRIPPER_SIDE_LENGTH;
     double step_size = covered_distance / number_of_steps;
 
+    //testing if the orientation of the object is greater or lower than 45deg
+    double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
+
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
     for (double i = step_size; i <= covered_distance; i += step_size){
-         grasp_pose.position.x = (starting_point + i) * cos(yaw);
-         grasp_pose.position.y = (starting_point + i) * sin(yaw);
-         grasp_pose.position.z = GRIPPER_LENGTH + cylinder_in_chassis_frame.pose.position.z + (cylinder_radius_); //MATH!! --> radius < height/2
-         grasp_pose.orientation.x = q[0];
-         grasp_pose.orientation.y = q[1];
-         grasp_pose.orientation.z = q[2];
-         grasp_pose.orientation.w = q[3];
-         grasp_pose_vector.push_back(grasp_pose);
+
+      /*if the object's orientation in roll or pitch is between -45deg and 45deg
+       *then the added distance is the cylinderInternalDiagonal/2
+       *if the orientation is outside this range then added distance is the cylinder radius*/
+
+      if(test >= sin(M_PI/4)){
+        grasp_pose.position.z = GRIPPER_LENGTH + cylinder_in_chassis_frame.pose.position.z + (cylinderInternalDiagonal/2);
+      } else if (test <= sin(M_PI/4)){
+        grasp_pose.position.z = GRIPPER_LENGTH + cylinder_in_chassis_frame.pose.position.z + (cylinder_radius_);
+      }
+      grasp_pose.position.x = (starting_point + i) * cos(yaw);
+      grasp_pose.position.y = (starting_point + i) * sin(yaw);
+      grasp_pose.orientation.x = q[0];
+      grasp_pose.orientation.y = q[1];
+      grasp_pose.orientation.z = q[2];
+      grasp_pose.orientation.w = q[3];
+      grasp_pose_vector.push_back(grasp_pose);
+
     }
+
     if(visualize){
       this->visualizeGrasps();
     }
@@ -246,8 +328,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
  } else { //side grasps
 
     side_grasps = true;
-    double cylinderInternalDiagonal = sqrt(pow(2 * cylinder_radius_,2)+pow(cylinder_height_,2));
-    double pitch_min =  - M_PI / 3; //60 deg
+    double pitch_min = - M_PI / 3; //60 deg
     double pitch_max = - M_PI / 9;  //20 deg
     double angle_incr= M_PI / 90;   // step --> 2 deg --> 20 steps
 
@@ -303,23 +384,19 @@ bool akit_pick_place::visualizeGrasps(){
       marker_pub.publish(marker);
    }
 }
-bool akit_pick_place::rotateGripper(bool plan_only){
+bool akit_pick_place::rotateGripper(){
   gripperJointPositions[0] += M_PI / 15; //gripper rotator joint
   gripperGroup->setJointValueTarget(gripperJointPositions);
-  if (plan_only){
-    gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    ROS_INFO_STREAM("Visualising gripper rotation motion plan: "<< (gripperSuccess ? "Planned" : "FAILED"));
-    return (gripperSuccess ? true : false);
-  } else {
-    gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    ROS_INFO_STREAM("Visualising gripper rotation motion plan: " << (gripperSuccess ? "Planned" : "FAILED"));
-    gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Rotated gripper" : "FAILED TO ROTATE GRIPPER"));
-    return (gripperSuccess ? true : false);
-  }
+
+  gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  ROS_INFO_STREAM("Visualising gripper rotation motion plan: " << (gripperSuccess ? "Planned" : "FAILED"));
+  gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Rotated gripper" : "FAILED TO ROTATE GRIPPER"));
+
+  return (gripperSuccess ? true : false);
 }
 
-bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){
+bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //needs adjusting
 
   geometry_msgs::PoseStamped object_in_world_frame, object_in_gripper_frame;
   object_in_world_frame.pose = object_.primitive_poses[0];
@@ -329,14 +406,20 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){
   transform_listener.waitForTransform("gripper_rotator", WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
   transform_listener.transformPose("gripper_rotator",ros::Time(0), object_in_world_frame, WORLD_FRAME, object_in_gripper_frame);
 
-  //get yaw between object frame and gripper frame
-  double yaw = tf::getYaw(object_in_gripper_frame.pose.orientation);
+  //get roll, pitch, yaw between object frame and gripper frame
+  tf::Quaternion qq(object_in_gripper_frame.pose.orientation.x, object_in_gripper_frame.pose.orientation.y,
+                    object_in_gripper_frame.pose.orientation.z, object_in_gripper_frame.pose.orientation.w);
+  tf::Matrix3x3 m(qq);
+  double roll, pitch, yaw;
+  m.getRPY(roll, pitch, yaw);
+  ROS_INFO_STREAM("roll: " << roll << " pitch: " << pitch << "yaw: " << yaw);
   //account for angles in different quadrants
   if (yaw < 0.0){
     gripperJointPositions[0] = (M_PI/2) + yaw;
   } else {
     gripperJointPositions[0] =  yaw - (M_PI/2);
   }
+
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
   gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -346,49 +429,34 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){
   return (gripperSuccess ? true : false);
  }
 
-bool akit_pick_place::openGripper(bool plan_only){
+bool akit_pick_place::openGripper(){
   gripperJointPositions[1] = 1.0; //fixed
   gripperJointPositions[2] = 1.0;
   gripperGroup->setJointValueTarget(gripperJointPositions);
-  if (plan_only){
-    gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    ROS_INFO_STREAM("Visualising open gripper motion plan: "<< (gripperSuccess ? "Planned" : "FAILED"));
-    return (gripperSuccess ? true : false);
-  } else {
-    gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    ROS_INFO_STREAM("Visualising open gripper motion plan: " << (gripperSuccess ? "Planned" : "FAILED"));
-    gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Opened gripper" : "FAILED TO OPEN GRIPPER"));
-    return (gripperSuccess ? true : false);
-  }
+
+  gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  ROS_INFO_STREAM("Visualising open gripper motion plan: " << (gripperSuccess ? "Planned" : "FAILED"));
+  gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Opened gripper" : "FAILED TO OPEN GRIPPER"));
+
+  return (gripperSuccess ? true : false);
 }
-bool akit_pick_place::closeGripper(bool plan_only){
+
+bool akit_pick_place::closeGripper(){
   gripperJointPositions[1] = 0.7;
   gripperJointPositions[2] = 0.7;
   gripperGroup->setJointValueTarget(gripperJointPositions); //
   int count = 0.0;
-  if (plan_only){
-    gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    while (!gripperSuccess){
-      ROS_INFO_STREAM("Failed to close Gripper --> rotating Gripper"); //remove later if orientation problem is solved!
-      this->rotateGripper();
-      gripperJointPositions[1] = 0.7;
-      gripperJointPositions[2] = 0.7;
-      gripperGroup->setJointValueTarget(gripperJointPositions);
-      gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      count++;
-      if (count == 15){ //number of rotations to return back to original position
-        break;
-    }
-  }
-    ROS_INFO_STREAM("Visualising closed gripper motion plan: " << (gripperSuccess ? "Planned" : "FAILED"));
-    return (gripperSuccess ? true : false);
-  } else {
-    gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    while (!gripperSuccess){
+
+  gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+
+  while (!gripperSuccess){
+
       ROS_INFO_STREAM("Failed to close Gripper --> rotating Gripper");
+
       this->openGripper();
       this->rotateGripper();
+
       gripperJointPositions[1] = 0.7;
       gripperJointPositions[2] = 0.7;
       gripperGroup->setJointValueTarget(gripperJointPositions);
@@ -400,8 +468,8 @@ bool akit_pick_place::closeGripper(bool plan_only){
      gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
      ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Closed gripper" : "FAILED TO CLOSE GRIPPER"));
      return (gripperSuccess ? true : false);
-  }
 }
+
 bool akit_pick_place::executeCartesianMotion(bool direction){
 
   //UP = true, DOWN = false
@@ -432,7 +500,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
   double fraction  = akitGroup->computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
   ROS_INFO_STREAM("Visualizing Cartesian Motion plan:  " << (fraction * 100.0) <<"%% achieved");
 
-  if (fraction * 100 > 40.0){ //adjust
+  if (fraction * 100 > 50.0){ //adjust
       MotionPlan.trajectory_ = trajectory;
       ROS_INFO_STREAM("====== 3. Executing Cartesian Motion ======");
       akitSuccess = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -520,6 +588,9 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     return false;
     exit(1);
   }
+
+  //TODO : add allowed collision matrix
+  //collision_detection::AllowedCollisionMatrix acm;
 
   //closing gripper
   if (!this->closeGripper()){
