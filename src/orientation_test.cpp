@@ -11,8 +11,9 @@ int main(int argc, char **argv){
   spinner.start();
   akit_pick_place akit;
 
+  //barrel pick Position
   geometry_msgs::Pose barrelPose;
-  barrelPose.position.x = -3.0;
+  barrelPose.position.x = 3.0;
   barrelPose.position.y = -2.0;
   barrelPose.position.z = 0.25;
   barrelPose.orientation.w = 0.685;
@@ -20,9 +21,11 @@ int main(int argc, char **argv){
   barrelPose.orientation.y = -0.159;
   barrelPose.orientation.z = -0.158;
 
+  //barrel place position
   geometry_msgs::Pose barrelPlace = barrelPose;
-  barrelPlace.position.x = -2.0;
+  barrelPlace.position.x = 2.0;
 
+  //block pick position
   geometry_msgs::Pose blockPose;
   blockPose.position.x = 3.0;
   blockPose.position.y = -2.0;
@@ -32,19 +35,22 @@ int main(int argc, char **argv){
   blockPose.orientation.y = -0.159;
   blockPose.orientation.z = -0.158;
 
+  //block place position
   geometry_msgs::Pose blockPlace = blockPose;
   blockPlace.position.x = 2.0;
 
   moveit_msgs::CollisionObject cylinder =  akit.addCollisionCylinder(barrelPose,"cylinder",CYLINDER_HEIGHT,CYLINDER_RADIUS);
+
   akit.generateGrasps(barrelPose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
   akit.pick(cylinder);
   akit.generateGrasps(barrelPlace, CYLINDER_HEIGHT,CYLINDER_RADIUS);
   akit.place(cylinder);
 
-  moveit_msgs::CollisionObject block = akit.addCollisionBlock(blockPose,"block",BLOCK_SIZE,BLOCK_SIZE,BLOCK_SIZE);
+  /*moveit_msgs::CollisionObject block = akit.addCollisionBlock(blockPose,"block",BLOCK_SIZE,BLOCK_SIZE,BLOCK_SIZE);
+
   akit.generateGrasps(blockPose,BLOCK_SIZE);
   akit.pick(block);
   akit.generateGrasps(blockPlace,BLOCK_SIZE);
-  akit.place(block);
+  akit.place(block);*/
 
 }

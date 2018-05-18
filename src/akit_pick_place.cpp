@@ -331,7 +331,12 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){
 
   //get yaw between object frame and gripper frame
   double yaw = tf::getYaw(object_in_gripper_frame.pose.orientation);
-  gripperJointPositions[0] = (M_PI/2) + yaw; //adjust signs +180 -180 ??
+  //account for angles in different quadrants
+  if (yaw < 0.0){
+    gripperJointPositions[0] = (M_PI/2) + yaw;
+  } else {
+    gripperJointPositions[0] =  yaw - (M_PI/2);
+  }
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
   gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
