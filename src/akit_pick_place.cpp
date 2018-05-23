@@ -4,12 +4,13 @@ geometry_msgs::Pose akit_pick_place::interactive_pose;
 std::string akit_pick_place::interactive_name;
 
 akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
-                                 std::string base_link_, std::string eef_parent_link_, double gripper_length_,
+                                 std::string base_link_, std::string eef_parent_link_,std::string gripper_frame_, double gripper_length_,
                                  double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_){
   PLANNING_GROUP_NAME = planning_group_;
   EEF_GROUP = eef_group_;
   WORLD_FRAME = world_frame_;
   BASE_LINK = base_link_;
+  GRIPPER_FRAME = gripper_frame_;
   GRIPPER_LENGTH = gripper_length_;
   GRIPPER_JAW_LENGTH = gripper_jaw_length_;
   GRIPPER_SIDE_LENGTH = gripper_side_length_;
@@ -32,10 +33,11 @@ akit_pick_place::akit_pick_place(){
   PLANNING_GROUP_NAME = "e1_complete";
   EEF_GROUP = "gripper";
   BASE_LINK = "chassis";
+  EEF_PARENT_LINK = "quickcoupler";
+  GRIPPER_FRAME = "gripper_rotator";
   GRIPPER_LENGTH = 1.05;
   GRIPPER_JAW_LENGTH = 0.30;
   GRIPPER_SIDE_LENGTH = 0.20;
-  EEF_PARENT_LINK = "quickcoupler";
   setFromGraspGenerator = true;
   side_grasps = false;
   waypoints = std::vector<geometry_msgs::Pose>(1);
@@ -53,6 +55,12 @@ akit_pick_place::~akit_pick_place(){
 void akit_pick_place::setBaseLink(std::string base_link_){
   BASE_LINK = base_link_;
 }
+void akit_pick_place::setWorldFrame(std::string world_frame_){
+  WORLD_FRAME = world_frame_;
+}
+void akit_pick_place::setGripperFrame(std::string gripper_frame_){
+  GRIPPER_FRAME = gripper_frame_;
+}
 void akit_pick_place::setDefaultPlanningGroup(){
   PLANNING_GROUP_NAME = "e1_complete";
 }
@@ -68,6 +76,15 @@ void akit_pick_place::setPreGraspPose(geometry_msgs::Pose preGraspPose){
 void akit_pick_place::setPrePlacePose(geometry_msgs::Pose prePlacePose){
   pre_place_pose = prePlacePose;
 }
+void akit_pick_place::setGripperLength(double gripper_length_){
+  GRIPPER_LENGTH = gripper_length_;
+}
+void akit_pick_place::setGripperSideLength(double gripper_side_length_){
+  GRIPPER_SIDE_LENGTH = gripper_side_length_;
+}
+void akit_pick_place::setGripperJawLength(double gripper_jaw_length_){
+  GRIPPER_JAW_LENGTH = gripper_jaw_length_;
+}
 std::string akit_pick_place::getPlanningGroup(){
   return PLANNING_GROUP_NAME;
 }
@@ -76,6 +93,21 @@ std::string akit_pick_place::getGripperGroup(){
 }
 std::string akit_pick_place::getBaseLink(){
   return BASE_LINK;
+}
+std::string akit_pick_place::getWorldFrame(){
+  return WORLD_FRAME;
+}
+std::string akit_pick_place::getGripperFrame(){
+  return GRIPPER_FRAME;
+}
+double akit_pick_place::getGripperLength(){
+  return GRIPPER_LENGTH;
+}
+double akit_pick_place::getGripperSideLength(){
+  return GRIPPER_SIDE_LENGTH;
+}
+double akit_pick_place::getGripperJawLength(){
+  return GRIPPER_JAW_LENGTH;
 }
 
 void akit_pick_place::displayTrajectory(moveit::planning_interface::MoveGroupInterface::Plan motion_plan_trajectory,
@@ -172,7 +204,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
   double roll_, pitch_, yaw_;
   m.getRPY(roll_, pitch_, yaw_);
 
-  //calculate roll,pitch,yaw of the object relative to the world frame
+  //transformation to base_link (chassis frame)
   geometry_msgs::PoseStamped cuboid_in_chassis_frame,cuboid_in_world_frame;
 
   cuboid_in_world_frame.pose = cuboid_pose_;
@@ -295,7 +327,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     double starting_point = line_length - cylinder_radius_ - GRIPPER_SIDE_LENGTH;
     double step_size = covered_distance / number_of_steps;
 
-    //testing if the orientation of the object is greater or lower than 45deg
+    //testing if the orientation of the object (in x,y) is greater or lower than 45deg
     double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
 
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
@@ -328,7 +360,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
  } else { //side grasps
 
     side_grasps = true;
-    double pitch_min = - M_PI / 3; //60 deg
+    double pitch_min = - M_PI / 3;  //60 deg
     double pitch_max = - M_PI / 9;  //20 deg
     double angle_incr= M_PI / 90;   // step --> 2 deg --> 20 steps
 
@@ -396,15 +428,15 @@ bool akit_pick_place::rotateGripper(){
   return (gripperSuccess ? true : false);
 }
 
-bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //needs adjusting
+bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //needs adjusting (rotation in y-axis has problems)
 
   geometry_msgs::PoseStamped object_in_world_frame, object_in_gripper_frame;
   object_in_world_frame.pose = object_.primitive_poses[0];
   object_in_world_frame.header.frame_id = object_.header.frame_id;
 
   //transform object from world frame to gripper rotator frame
-  transform_listener.waitForTransform("gripper_rotator", WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
-  transform_listener.transformPose("gripper_rotator",ros::Time(0), object_in_world_frame, WORLD_FRAME, object_in_gripper_frame);
+  transform_listener.waitForTransform(GRIPPER_FRAME, WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
+  transform_listener.transformPose(GRIPPER_FRAME,ros::Time(0), object_in_world_frame, WORLD_FRAME, object_in_gripper_frame);
 
   //get roll, pitch, yaw between object frame and gripper frame
   tf::Quaternion qq(object_in_gripper_frame.pose.orientation.x, object_in_gripper_frame.pose.orientation.y,
@@ -412,9 +444,9 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
   tf::Matrix3x3 m(qq);
   double roll, pitch, yaw;
   m.getRPY(roll, pitch, yaw);
-  ROS_INFO_STREAM("roll: " << roll << " pitch: " << pitch << "yaw: " << yaw);
-  //account for angles in different quadrants
-  if (yaw < 0.0){
+  ROS_INFO_STREAM("roll: " << roll << " , pitch: " << pitch << " , yaw: " << yaw);
+  //account for angles in different quadrants --> rotate x --> y --> z
+  if (yaw <= 0.0){
     gripperJointPositions[0] = (M_PI/2) + yaw;
   } else {
     gripperJointPositions[0] =  yaw - (M_PI/2);
@@ -430,7 +462,7 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
  }
 
 bool akit_pick_place::openGripper(){
-  gripperJointPositions[1] = 1.0; //fixed
+  gripperJointPositions[1] = 1.0;
   gripperJointPositions[2] = 1.0;
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
@@ -445,7 +477,7 @@ bool akit_pick_place::openGripper(){
 bool akit_pick_place::closeGripper(){
   gripperJointPositions[1] = 0.7;
   gripperJointPositions[2] = 0.7;
-  gripperGroup->setJointValueTarget(gripperJointPositions); //
+  gripperGroup->setJointValueTarget(gripperJointPositions);
   int count = 0.0;
 
   gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -475,10 +507,6 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
   //UP = true, DOWN = false
   geometry_msgs::PoseStamped pose_in_chassis_frame, pose_in_quickcoupler_frame;
 
-  const double jump_threshold = 0.0;
-  const double eef_step = 0.01;
-  akitGroup->setMaxVelocityScalingFactor(0.1);
-
   pose_in_chassis_frame.pose = akitGroup->getCurrentPose(EEF_PARENT_LINK).pose; //chassis frame
   pose_in_chassis_frame.header.frame_id = BASE_LINK; //pose stamped
 
@@ -497,10 +525,14 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
   transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_quickcoupler_frame, EEF_PARENT_LINK, pose_in_chassis_frame);
 
   waypoints[0] = pose_in_chassis_frame.pose;
+  const double jump_threshold = 0.0;
+  const double eef_step = 0.01;
+  akitGroup->setMaxVelocityScalingFactor(0.1);
+
   double fraction  = akitGroup->computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
   ROS_INFO_STREAM("Visualizing Cartesian Motion plan:  " << (fraction * 100.0) <<"%% achieved");
 
-  if (fraction * 100 > 50.0){ //adjust
+  if (fraction * 100 > 50.0){
       MotionPlan.trajectory_ = trajectory;
       ROS_INFO_STREAM("====== 3. Executing Cartesian Motion ======");
       akitSuccess = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
