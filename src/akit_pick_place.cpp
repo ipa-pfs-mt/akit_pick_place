@@ -333,7 +333,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
     for (double i = step_size; i <= covered_distance; i += step_size){
 
-      /*if the object's orientation in roll or pitch is between -45deg and 45deg
+      /*if the object's orientation in world frame --> roll or pitch is between -45deg and 45deg
        *then the added distance is the cylinderInternalDiagonal/2
        *if the orientation is outside this range then added distance is the cylinder radius*/
 
@@ -428,7 +428,7 @@ bool akit_pick_place::rotateGripper(){
   return (gripperSuccess ? true : false);
 }
 
-bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //needs adjusting (rotation in y-axis has problems)
+bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //needs adjusting !!(rotation in y-axis has problems)
 
   geometry_msgs::PoseStamped object_in_world_frame, object_in_gripper_frame;
   object_in_world_frame.pose = object_.primitive_poses[0];
@@ -445,7 +445,7 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
   double roll, pitch, yaw;
   m.getRPY(roll, pitch, yaw);
   ROS_INFO_STREAM("roll: " << roll << " , pitch: " << pitch << " , yaw: " << yaw);
-  //account for angles in different quadrants --> rotate x --> y --> z
+  //account for angles in different quadrants --> rotate x --> y(0) --> z
   if (yaw <= 0.0){
     gripperJointPositions[0] = (M_PI/2) + yaw;
   } else {
@@ -475,8 +475,8 @@ bool akit_pick_place::openGripper(){
 }
 
 bool akit_pick_place::closeGripper(){
-  gripperJointPositions[1] = 0.7;
-  gripperJointPositions[2] = 0.7;
+  gripperJointPositions[1] = 0.8;
+  gripperJointPositions[2] = 0.8;
   gripperGroup->setJointValueTarget(gripperJointPositions);
   int count = 0.0;
 
@@ -532,7 +532,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
   double fraction  = akitGroup->computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
   ROS_INFO_STREAM("Visualizing Cartesian Motion plan:  " << (fraction * 100.0) <<"%% achieved");
 
-  if (fraction * 100 > 50.0){
+  if (fraction * 100 > 40.0){
       MotionPlan.trajectory_ = trajectory;
       ROS_INFO_STREAM("====== 3. Executing Cartesian Motion ======");
       akitSuccess = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -612,7 +612,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
      return false;
      exit(1);
     }
-}
+  }
 
   //cartesian motion downwards
   if (!this->executeCartesianMotion(DOWN)){
