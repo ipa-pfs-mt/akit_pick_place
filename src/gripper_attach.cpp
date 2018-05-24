@@ -1,5 +1,8 @@
 #include <akit_pick_place/akit_pick_place.h>
 
+double quickcoupler_z = 0.13;
+double quickcoupler_x = 0.05;
+
 int main(int argc, char **argv){
 
   ros::init(argc, argv, "gripper_attach");
@@ -7,35 +10,40 @@ int main(int argc, char **argv){
   ros::AsyncSpinner spinner(1);
   spinner.start();
 
-  /*robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
+  ros::ServiceClient plannnig_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
+
+  robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
   robot_model::RobotModelPtr kinematic_model = robot_model_loader.getModel();
-  planning_scene::PlanningScene planning_scene(kinematic_model);*/
+  planning_scene::PlanningScene planning_scene(kinematic_model);
 
   moveit::planning_interface::MoveGroupInterface akitGroup("e1_complete");
   moveit::planning_interface::MoveGroupInterface::Plan motionPlan;
   tf::TransformListener listener;
 
-  /*collision_detection::CollisionRequest collision_request;
-  collision_detection::CollisionResult collision_result;
-  planning_scene.checkSelfCollision(collision_request, collision_result);
-  ROS_INFO_STREAM("Test 1: Current state is " << (collision_result.collision ? "in" : "not in") << " self collision");
-  collision_request.contacts = true;
-  collision_request.max_contacts = 1000;
+  const robot_state::JointModelGroup *joint_model_group = akitGroup.getCurrentState()->getJointModelGroup("e1_complete");
+
+  moveit_msgs::PlanningScene planning_scene_msg;
+  moveit_msgs::ApplyPlanningScene planning_scene_srv;
+
   collision_detection::AllowedCollisionMatrix acm = planning_scene.getAllowedCollisionMatrix();
   acm.setEntry("quickcoupler","gripper_rotator", true);
   acm.setEntry("stick","gripper_rotator",true);
-  collision_result.clear();
-  planning_scene.getCurrentState();*/
+
+  acm.getMessage(planning_scene_msg.allowed_collision_matrix);
+  planning_scene_msg.is_diff = true;
+  planning_scene_srv.request.scene = planning_scene_msg;
+  plannnig_scene_diff_client.call(planning_scene_srv);
 
   geometry_msgs::PoseStamped marker_pose;
   marker_pose.header.frame_id = "gripper_rotator";
-  marker_pose.pose.position.x = -0.1;
+  marker_pose.pose.position.x = - quickcoupler_z;
   marker_pose.pose.position.y = 0.0;
-  marker_pose.pose.position.z = 0.4;
+  marker_pose.pose.position.z = 0.25; //adjust
+  marker_pose.pose.orientation.w = 0.707; //rotation 90d around y
   marker_pose.pose.orientation.x = 0.0;
   marker_pose.pose.orientation.y = -0.707;
   marker_pose.pose.orientation.z = 0.0;
-  marker_pose.pose.orientation.w = 0.707;
+
 
   geometry_msgs::PoseStamped marker_pose_in_world_frame;
   //transform object pose from gripper frame to chassis frame
@@ -73,6 +81,38 @@ int main(int argc, char **argv){
    bool success = (akitGroup.plan(motionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
    if(success)
      akitGroup.execute(motionPlan);
+
+   geometry_msgs::PoseStamped marker_pose_in_quickcoupler_frame;
+   //transform pose from gripper frame to chassis frame
+   listener.waitForTransform("quickcoupler","chassis", ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+   listener.transformPose("quickcoupler",ros::Time(0), marker_pose_in_world_frame, "chassis", marker_pose_in_quickcoupler_frame);
+
+   marker_pose_in_quickcoupler_frame.pose.position.x -= 0.25 + quickcoupler_x;
+
+   listener.waitForTransform("chassis","quickcoupler", ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+   listener.transformPose("chassis",ros::Time(0), marker_pose_in_quickcoupler_frame, "quickcoupler", marker_pose_in_world_frame);
+
+   akitGroup.setPoseTarget(marker_pose_in_world_frame.pose);
+   success = (akitGroup.plan(motionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+   if(success)
+     akitGroup.execute(motionPlan);
+
+   moveit::core::RobotStatePtr current_state = akitGroup.getCurrentState();
+   std::vector<double> joint_group_positions;
+   current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
+
+   const std::vector<std::string> &jointNames = joint_model_group->getVariableNames();
+
+   joint_group_positions[4] += M_PI/2; //rotate gripper
+   akitGroup.setJointValueTarget(joint_group_positions);
+   success = (akitGroup.plan(motionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+   if(success)
+     akitGroup.execute(motionPlan);
+
+   for (std::size_t i = 0; i < jointNames.size(); ++i){
+     ROS_INFO("joint %s: %f", jointNames[i].c_str(), joint_group_positions[i]);
+    }
+
 }
 
 
