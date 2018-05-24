@@ -337,7 +337,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     double starting_point = line_length - cylinder_radius_ - GRIPPER_SIDE_LENGTH;
     double step_size = covered_distance / number_of_steps;
 
-    //testing if the orientation of the object (in x,y) is greater or lower than 45deg
+    //testing if the orientation of the object (in x,y) is greater or lower than 45deg //check with yaw
     double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
 
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis

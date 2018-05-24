@@ -177,8 +177,8 @@ target_link_libraries(interactive_pick_test ${catkin_LIBRARIES})
 add_executable(orientation_test src/orientation_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(orientation_test ${catkin_LIBRARIES})
 
-add_executable(cuboid_test src/cuboid_test.cpp src/akit_pick_place.cpp)
-target_link_libraries(cuboid_test ${catkin_LIBRARIES})
+add_executable(orientation_test_2 src/orientation_test_2.cpp src/akit_pick_place.cpp)
+target_link_libraries(orientation_test_2 ${catkin_LIBRARIES})
 
 add_executable(gripper_attach src/gripper_attach.cpp src/akit_pick_place.cpp)
 target_link_libraries(gripper_attach ${catkin_LIBRARIES})
