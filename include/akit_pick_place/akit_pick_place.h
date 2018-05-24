@@ -10,6 +10,7 @@
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_msgs/DisplayTrajectory.h>
+#include <moveit_msgs/ApplyPlanningScene.h>
 #include <tf/transform_datatypes.h>
 #include <tf/tf.h>
 
@@ -28,6 +29,7 @@ private:
   ros::NodeHandle nh;
   ros::Publisher marker_pub;
   ros::Subscriber marker_sub;
+  ros::ServiceClient planning_scene_diff_client;
   visualization_msgs::Marker marker;   //marker for grasp points
   tf::TransformListener transform_listener;
 
@@ -70,9 +72,17 @@ private:
   moveit::planning_interface::MoveGroupInterface::Plan gripperMotionPlan;
   moveit_visual_tools::MoveItVisualToolsPtr visual_tools;
   moveit::core::RobotStatePtr gripperState;
+  moveit_msgs::PlanningScene planningSceneMsg;
+  moveit_msgs::ApplyPlanningScene planningSceneSrv;
   std::vector<double> gripperJointPositions;
   const robot_state::JointModelGroup *akitJointModelGroup;
   const robot_state::JointModelGroup *gripperJointModelGroup;
+  robot_model_loader::RobotModelLoaderPtr robotModelLoader;
+  robot_model::RobotModelPtr robotModelPtr;
+  planning_scene::PlanningScenePtr planningScenePtr;
+  moveit_msgs::PlanningScene planning_scene_msg_;
+  moveit_msgs::ApplyPlanningScene planning_scene_srv;
+  collision_detection::AllowedCollisionMatrix acm;
 
   //interactive markers
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
@@ -128,6 +138,8 @@ public:
   bool openGripper();
   bool closeGripper();
   bool executeCartesianMotion(bool direction);
+  void allowObjectCollision(std::string object_id);
+  void resetAllowedCollisionMatrix(std::string object_id);
   bool pick(moveit_msgs::CollisionObject object_);
   bool place(moveit_msgs::CollisionObject object_);
   bool pick_place(moveit_msgs::CollisionObject object_);

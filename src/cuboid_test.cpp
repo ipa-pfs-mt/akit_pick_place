@@ -18,7 +18,7 @@ int main(int argc, char **argv){
   ros::AsyncSpinner spinner(1);
   spinner.start();
   akit_pick_place akit;
-  akit.addGround();
+  //akit.addGround();
 
   double quat[4];
 
@@ -31,7 +31,7 @@ int main(int argc, char **argv){
     geometry_msgs::Pose cuboid_pose;
     cuboid_pose.position.x = fRand(-2.0,2.0);
     cuboid_pose.position.y = fRand(2.0,3.0);
-    cuboid_pose.position.z = 0.5;
+    cuboid_pose.position.z = 0.25;
     cuboid_pose.orientation.w = q[0];
     cuboid_pose.orientation.x = q[1];
     cuboid_pose.orientation.y = q[2];
@@ -52,5 +52,4 @@ int main(int argc, char **argv){
       continue;
     }
   }
-
 }

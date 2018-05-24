@@ -16,6 +16,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   GRIPPER_SIDE_LENGTH = gripper_side_length_;
   EEF_PARENT_LINK = eef_parent_link_;
   setFromGraspGenerator = set_from_grasp_generator_;
+  side_grasps = false;
   waypoints = std::vector<geometry_msgs::Pose>(1);
   akitGroup = new moveit::planning_interface::MoveGroupInterface(planning_group_);
   gripperGroup = new moveit::planning_interface::MoveGroupInterface(eef_group_);
@@ -23,9 +24,13 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup(eef_group_);
   gripperState = gripperGroup->getCurrentState();
   gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
+  robotModelLoader.reset(new robot_model_loader::RobotModelLoader("robot_description"));
+  robotModelPtr = robotModelLoader->getModel();
+  planningScenePtr.reset(new planning_scene::PlanningScene(robotModelPtr));
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools(base_link_, "visualization_marker"));
-  side_grasps = false;
+  planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
+  marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
 }
 
 akit_pick_place::akit_pick_place(){
@@ -47,8 +52,13 @@ akit_pick_place::akit_pick_place(){
   gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup("gripper");
   gripperState = gripperGroup->getCurrentState();
   gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
+  robotModelLoader.reset(new robot_model_loader::RobotModelLoader("robot_description"));
+  robotModelPtr = robotModelLoader->getModel();
+  planningScenePtr.reset(new planning_scene::PlanningScene(robotModelPtr));
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));
+  planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
+  marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
 }
 akit_pick_place::~akit_pick_place(){
 }
@@ -389,8 +399,8 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
 }
 
 bool akit_pick_place::visualizeGrasps(){
+
   ROS_INFO_STREAM("---------- *Grasp Points visualization* ----------");
-  marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
   uint32_t shape = visualization_msgs::Marker::ARROW;
   marker.header.frame_id = BASE_LINK; //world frame ?? --> test
   marker.header.stamp = ros::Time::now();
@@ -475,8 +485,8 @@ bool akit_pick_place::openGripper(){
 }
 
 bool akit_pick_place::closeGripper(){
-  gripperJointPositions[1] = 0.8;
-  gripperJointPositions[2] = 0.8;
+  gripperJointPositions[1] = 0.5; //relate to object length
+  gripperJointPositions[2] = 0.5;
   gripperGroup->setJointValueTarget(gripperJointPositions);
   int count = 0.0;
 
@@ -542,6 +552,36 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
       ROS_ERROR("Cannot execute cartesian motion, plan < 50 %%");
       return false;
     }
+}
+
+//allow gripper to touch object to be picked
+void akit_pick_place::allowObjectCollision(std::string object_id){
+  acm = planningScenePtr->getAllowedCollisionMatrix();
+
+  std::vector<std::string> gripper_links = gripperGroup->getLinkNames();
+  for(int i = 0;i < gripper_links.size(); ++i){
+     acm.setEntry(gripper_links[i], object_id, true);
+  }
+
+  acm.getMessage(planning_scene_msg_.allowed_collision_matrix);
+  planning_scene_msg_.is_diff = true;
+  planning_scene_srv.request.scene = planning_scene_msg_;
+  planning_scene_diff_client.call(planning_scene_srv);
+}
+
+//reset acm to restore object as a collision object
+void akit_pick_place::resetAllowedCollisionMatrix(std::string object_id){
+  acm = planningScenePtr->getAllowedCollisionMatrix();
+
+  std::vector<std::string> gripper_links = gripperGroup->getLinkNames();
+  for(int i = 0;i < gripper_links.size(); ++i){
+     acm.removeEntry(gripper_links[i], object_id);
+  }
+
+  acm.getMessage(planning_scene_msg_.allowed_collision_matrix);
+  planning_scene_msg_.is_diff = true;
+  planning_scene_srv.request.scene = planning_scene_msg_;
+  planning_scene_diff_client.call(planning_scene_srv);
 }
 
 bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
@@ -621,8 +661,8 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     exit(1);
   }
 
-  //TODO : add allowed collision matrix
-  //collision_detection::AllowedCollisionMatrix acm;
+  //add allowed collision matrix
+  this->allowObjectCollision(object_.id);
 
   //closing gripper
   if (!this->closeGripper()){
@@ -648,6 +688,8 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     exit(1);
   }
   visual_tools->deleteAllMarkers();
+
+  return true;
 }
 
 bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
@@ -735,7 +777,13 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
     return false;
     exit(1);
   }
+  //delete published trajectory
   visual_tools->deleteAllMarkers();
+
+  //reset allowed collision matrix
+  this->resetAllowedCollisionMatrix(object_.id);
+
+  return true;
 }
 
 bool akit_pick_place::pick_place(moveit_msgs::CollisionObject object_){ //finalize after testing --> works only with blender (integrate with grasp generator)
@@ -946,5 +994,3 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
   }
   return true;
 }
-
-
