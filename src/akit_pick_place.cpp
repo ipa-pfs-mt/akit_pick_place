@@ -431,9 +431,10 @@ bool akit_pick_place::rotateGripper(){
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
   gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  ROS_INFO_STREAM("Visualising gripper rotation motion plan: " << (gripperSuccess ? "Planned" : "FAILED"));
-  gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Rotated gripper" : "FAILED TO ROTATE GRIPPER"));
+  if (gripperSuccess){
+    gripperGroup->execute(gripperMotionPlan);
+    ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Rotated gripper" : "FAILED TO ROTATE GRIPPER"));
+  }
 
   return (gripperSuccess ? true : false);
 }
@@ -454,7 +455,6 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
   tf::Matrix3x3 m(qq);
   double roll, pitch, yaw;
   m.getRPY(roll, pitch, yaw);
-  ROS_INFO_STREAM("roll: " << roll << " , pitch: " << pitch << " , yaw: " << yaw);
   //account for angles in different quadrants --> rotate x --> y(0) --> z
   if (yaw <= 0.0){
     gripperJointPositions[0] = (M_PI/2) + yaw;
@@ -465,9 +465,11 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
   gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  ROS_INFO_STREAM("Visualising gripper rotation motion plan: " << (gripperSuccess ? "Planned" : "FAILED"));
-  gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Rotated gripper" : "FAILED TO ROTATE GRIPPER"));
+  if (gripperSuccess){
+    gripperGroup->execute(gripperMotionPlan);
+    ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Rotated gripper" : "FAILED TO ROTATE GRIPPER"));
+  }
+
   return (gripperSuccess ? true : false);
  }
 
@@ -477,10 +479,10 @@ bool akit_pick_place::openGripper(){
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
   gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  ROS_INFO_STREAM("Visualising open gripper motion plan: " << (gripperSuccess ? "Planned" : "FAILED"));
-  gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Opened gripper" : "FAILED TO OPEN GRIPPER"));
-
+  if (gripperSuccess){
+    gripperGroup->execute(gripperMotionPlan);
+    ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Opened gripper" : "FAILED TO OPEN GRIPPER"));
+  }
   return (gripperSuccess ? true : false);
 }
 
@@ -507,9 +509,12 @@ bool akit_pick_place::closeGripper(){
       if (count == 15)
         break;
      } //execute after planning success
-     gripperSuccess = (gripperGroup->execute(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-     ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Closed gripper" : "FAILED TO CLOSE GRIPPER"));
-     return (gripperSuccess ? true : false);
+
+  if (gripperSuccess){
+    gripperGroup->execute(gripperMotionPlan);
+    ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Closed gripper" : "FAILED TO CLOSE GRIPPER"));
+  }
+  return (gripperSuccess ? true : false);
 }
 
 bool akit_pick_place::executeCartesianMotion(bool direction){
@@ -546,7 +551,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction){
       MotionPlan.trajectory_ = trajectory;
       ROS_INFO_STREAM("====== 3. Executing Cartesian Motion ======");
       akitSuccess = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      ROS_INFO_STREAM("cartesian motion plan: " << (akitSuccess ? "EXECUTED MOTION PLAN --> cartesian motion" : "FAILED TO EXECUTE CARTESIAN MOTION PLAN"));
+      ROS_INFO_STREAM("cartesian motion plan: " << (akitSuccess ? "EXECUTED MOTION PLAN" : "FAILED TO EXECUTE CARTESIAN MOTION PLAN"));
       return (akitSuccess ? true : false);
     } else {
       ROS_ERROR("Cannot execute cartesian motion, plan < 50 %%");
