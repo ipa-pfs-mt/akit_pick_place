@@ -159,31 +159,31 @@ include_directories(
 #add_executable(akit_pick_place src/akit_pick_place.cpp)
 #target_link_libraries(akit_pick_place ${catkin_LIBRARIES})
 
-add_executable(pick_place_test src/pick_place_test.cpp src/akit_pick_place.cpp)
+add_executable(pick_place_test scripts/pick_place_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(pick_place_test ${catkin_LIBRARIES})
 
-add_executable(pick_place_test_2 src/pick_place_test_2.cpp src/akit_pick_place.cpp)
+add_executable(pick_place_test_2 scripts/pick_place_test_2.cpp src/akit_pick_place.cpp)
 target_link_libraries(pick_place_test_2 ${catkin_LIBRARIES})
 
-add_executable(random_pick_place_arrange_test src/random_pick_place_arrange_test.cpp src/akit_pick_place.cpp)
+add_executable(random_pick_place_arrange_test scripts/random_pick_place_arrange_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(random_pick_place_arrange_test ${catkin_LIBRARIES})
 
-add_executable(interactive_markers_test src/interactive_markers_test.cpp src/akit_pick_place.cpp)
+add_executable(interactive_markers_test scripts/interactive_markers_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(interactive_markers_test ${catkin_LIBRARIES})
 
-add_executable(interactive_pick_test src/interactive_pick_test.cpp src/akit_pick_place.cpp)
+add_executable(interactive_pick_test scripts/interactive_pick_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(interactive_pick_test ${catkin_LIBRARIES})
 
-add_executable(orientation_test src/orientation_test.cpp src/akit_pick_place.cpp)
+add_executable(orientation_test scripts/orientation_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(orientation_test ${catkin_LIBRARIES})
 
-add_executable(orientation_test_2 src/orientation_test_2.cpp src/akit_pick_place.cpp)
+add_executable(orientation_test_2 scripts/orientation_test_2.cpp src/akit_pick_place.cpp)
 target_link_libraries(orientation_test_2 ${catkin_LIBRARIES})
 
-add_executable(gripper_attach src/gripper_attach.cpp src/akit_pick_place.cpp)
-target_link_libraries(gripper_attach ${catkin_LIBRARIES})
+add_executable(tool_attach scripts/tool_attach.cpp src/akit_pick_place.cpp)
+target_link_libraries(tool_attach ${catkin_LIBRARIES})
 
-add_executable(tool_exchange_test src/tool_exchange_test.cpp src/akit_pick_place.cpp)
+add_executable(tool_exchange_test scripts/tool_exchange_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(tool_exchange_test ${catkin_LIBRARIES})
 
 

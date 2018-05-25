@@ -5,13 +5,10 @@ double quickcoupler_x = 0.035; //distance between quickcoupler frame origin and 
 
 int main(int argc, char **argv){
 
-  ros::init(argc, argv, "gripper_attach");
+  ros::init(argc, argv, "tool_attach");
   ros::NodeHandle nh;
   ros::AsyncSpinner spinner(1);
   spinner.start();
-
-  akit_pick_place akit;
-  akit.attachGripper();
 
   ros::ServiceClient plannnig_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
 
@@ -29,8 +26,9 @@ int main(int argc, char **argv){
   moveit_msgs::ApplyPlanningScene planning_scene_srv;
 
   collision_detection::AllowedCollisionMatrix acm = planning_scene.getAllowedCollisionMatrix();
-  acm.setEntry("quickcoupler","gripper_rotator", true);
-  acm.setEntry("stick","gripper_rotator",true);
+  acm.setEntry("quickcoupler","bucket_raedlinger", true);
+  acm.setEntry("stick","bucket_raedlinger",true);
+  acm.setEntry("bucket_lever_2","bucket_raedlinger",true);
 
   acm.getMessage(planning_scene_msg.allowed_collision_matrix);
   planning_scene_msg.is_diff = true;
@@ -39,26 +37,26 @@ int main(int argc, char **argv){
 
   tf::Quaternion q = tf::createQuaternionFromRPY(0.0,-M_PI/2,0.0);
   geometry_msgs::PoseStamped marker_pose;
-  marker_pose.header.frame_id = "gripper_rotator";
+  marker_pose.header.frame_id = "bucket_raedlinger";
   marker_pose.pose.position.x = - quickcoupler_z; //translate the quickcoupler so that both locks match
   marker_pose.pose.position.y = 0.0;
   marker_pose.pose.position.z = 0.25; //adjust
-  marker_pose.pose.orientation.w = q[3]; //rotation 90d around y
   marker_pose.pose.orientation.x = q[0];
   marker_pose.pose.orientation.y = q[1];
   marker_pose.pose.orientation.z = q[2];
+  marker_pose.pose.orientation.w = q[3];
 
 
   geometry_msgs::PoseStamped marker_pose_in_world_frame;
   //transform object pose from gripper frame to chassis frame
-  listener.waitForTransform("chassis","gripper_rotator", ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
-  listener.transformPose("chassis",ros::Time(0), marker_pose, "gripper_rotator", marker_pose_in_world_frame);
+  listener.waitForTransform("chassis","bucket_raedlinger", ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+  listener.transformPose("chassis",ros::Time(0), marker_pose, "bucket_raedlinger", marker_pose_in_world_frame);
 
   ros::Publisher markerP;
   markerP = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
   uint32_t shape = visualization_msgs::Marker::ARROW;
   visualization_msgs::Marker marker;
-  marker.header.frame_id = "gripper_rotator";
+  marker.header.frame_id = "bucket_raedlinger";
   marker.header.stamp = ros::Time::now();
   marker.ns = "basic_shapes";
   marker.type = shape;
@@ -108,7 +106,7 @@ int main(int argc, char **argv){
 
    const std::vector<std::string> &jointNames = joint_model_group->getVariableNames();
 
-   joint_group_positions[4] += M_PI/2; //rotate gripper
+   joint_group_positions[4] += M_PI/2; //rotate quickcoupler
    akitGroup.setJointValueTarget(joint_group_positions);
    success = (akitGroup.plan(motionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
    if(success)

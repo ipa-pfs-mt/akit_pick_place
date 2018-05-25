@@ -37,6 +37,7 @@ private:
   std::string WORLD_FRAME;
   std::string BASE_LINK;
   std::string GRIPPER_FRAME;
+  std::string BUCKET_FRAME;
   std::string PLANNING_GROUP_NAME;
   std::string EEF_PARENT_LINK; //last link in planning group kinematic chain "quickcoupler"
   std::string EEF_GROUP;
@@ -99,8 +100,8 @@ public:
   //constructors
   akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
                   std::string base_link_, std::string eef_parent_link_, std::string gripper_frame_,
-                  double gripper_length_, double gripper_jaw_length_, double gripper_side_length_,
-                  bool set_from_grasp_generator_);
+                  std::string bucket_frame_, double gripper_length_, double gripper_jaw_length_,
+                  double gripper_side_length_, bool set_from_grasp_generator_);
   akit_pick_place();
   ~akit_pick_place();
 
@@ -141,7 +142,7 @@ public:
   bool closeGripper();
   bool executeCartesianMotion(bool direction);
   void allowObjectCollision(std::string object_id);
-  void allowGripperCollision();
+  void allowToolCollision(std::string tool_id);
   void resetAllowedCollisionMatrix(std::string object_id);
   bool pick(moveit_msgs::CollisionObject object_);
   bool place(moveit_msgs::CollisionObject object_);
@@ -153,7 +154,7 @@ public:
   void addInteractiveMarkers();
   void addGround();
 
-  bool attachGripper();
+  bool attachTool(std::string tool_id);
 
 };
 

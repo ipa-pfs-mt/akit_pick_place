@@ -4,13 +4,15 @@ geometry_msgs::Pose akit_pick_place::interactive_pose;
 std::string akit_pick_place::interactive_name;
 
 akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
-                                 std::string base_link_, std::string eef_parent_link_,std::string gripper_frame_, double gripper_length_,
-                                 double gripper_jaw_length_, double gripper_side_length_, bool set_from_grasp_generator_){
+                                 std::string base_link_, std::string eef_parent_link_,std::string gripper_frame_,std::string bucket_frame_,
+                                 double gripper_length_, double gripper_jaw_length_, double gripper_side_length_,
+                                 bool set_from_grasp_generator_){
   PLANNING_GROUP_NAME = planning_group_;
   EEF_GROUP = eef_group_;
   WORLD_FRAME = world_frame_;
   BASE_LINK = base_link_;
   GRIPPER_FRAME = gripper_frame_;
+  BUCKET_FRAME = bucket_frame_;
   GRIPPER_LENGTH = gripper_length_;
   GRIPPER_JAW_LENGTH = gripper_jaw_length_;
   GRIPPER_SIDE_LENGTH = gripper_side_length_;
@@ -42,6 +44,7 @@ akit_pick_place::akit_pick_place(){
   BASE_LINK = "chassis";
   EEF_PARENT_LINK = "quickcoupler";
   GRIPPER_FRAME = "gripper_rotator";
+  BUCKET_FRAME = "bucket_raedlinger";
   GRIPPER_LENGTH = 1.05;
   GRIPPER_JAW_LENGTH = 0.30;
   GRIPPER_SIDE_LENGTH = 0.20;
@@ -49,8 +52,8 @@ akit_pick_place::akit_pick_place(){
   side_grasps = false;
   waypoints = std::vector<geometry_msgs::Pose>(1);
   akitGroup = new moveit::planning_interface::MoveGroupInterface("e1_complete");
-  gripperGroup = new moveit::planning_interface::MoveGroupInterface("gripper");
   akitJointModelGroup = akitGroup->getCurrentState()->getJointModelGroup("e1_complete");
+  gripperGroup = new moveit::planning_interface::MoveGroupInterface("gripper");
   gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup("gripper");
   gripperState = gripperGroup->getCurrentState();
   akitState = akitGroup->getCurrentState();
@@ -578,10 +581,19 @@ void akit_pick_place::allowObjectCollision(std::string object_id){
   planning_scene_diff_client.call(planning_scene_srv);
 }
 
-void akit_pick_place::allowGripperCollision(){ //temp until cartesian motion function upgrade
+//allow collision during tool exchange
+void akit_pick_place::allowToolCollision(std::string tool_id){  //temp until cartesian motion function upgrade
   acm = acm = planningScenePtr->getAllowedCollisionMatrix();
-  acm.setEntry(EEF_PARENT_LINK,GRIPPER_FRAME, true);
-  acm.setEntry("stick",GRIPPER_FRAME,true);
+  std::transform(tool_id.begin(), tool_id.end(), tool_id.begin(), ::tolower);
+
+  if (tool_id == "bucket"){
+    acm.setEntry(EEF_PARENT_LINK,BUCKET_FRAME, true);
+    acm.setEntry("stick",BUCKET_FRAME,true);
+    acm.setEntry("bucket_lever_2",BUCKET_FRAME,true);
+  } else if (tool_id == "gripper"){
+    acm.setEntry(EEF_PARENT_LINK,GRIPPER_FRAME, true);
+    acm.setEntry("stick",GRIPPER_FRAME,true);
+  }
 
   acm.getMessage(planning_scene_msg_.allowed_collision_matrix);
   planning_scene_msg_.is_diff = true;
@@ -1015,30 +1027,46 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
   return true;
 }
 
-bool akit_pick_place::attachGripper(){
+bool akit_pick_place::attachTool(std::string tool_id){
+
+  std::transform(tool_id.begin(), tool_id.end(), tool_id.begin(), ::tolower);
+  if (tool_id != "gripper" || tool_id != "bucket"){
+    ROS_ERROR_STREAM("Unknown tool, please write correct tool name");
+    return false;
+    exit(1);
+  }
+
   //variables
   double quickcoupler_z = 0.13; //distance between quickcoupler frame origin and lock in z-direction
   double quickcoupler_x = 0.035; //distance between quickcoupler frame origin and edge in x-direction
   double distance_above_gripper = 0.25; //25 cm above gripper
 
   tf::Quaternion q = tf::createQuaternionFromRPY(0.0,-M_PI/2,0.0); //rotate 90deg around y-axis
-  geometry_msgs::PoseStamped initial_pose_gripper_frame, initial_pose_world_frame, initial_pose_quickcoupler_frame;
-  initial_pose_gripper_frame.header.frame_id = GRIPPER_FRAME;
-  initial_pose_gripper_frame.pose.position.x = - quickcoupler_z; //translate the quickcoupler so that both locks match
-  initial_pose_gripper_frame.pose.position.y = 0.0;
-  initial_pose_gripper_frame.pose.position.z = distance_above_gripper;
-  initial_pose_gripper_frame.pose.orientation.x = q[0];
-  initial_pose_gripper_frame.pose.orientation.y = q[1];
-  initial_pose_gripper_frame.pose.orientation.z = q[2];
-  initial_pose_gripper_frame.pose.orientation.w = q[3];
+  geometry_msgs::PoseStamped initial_pose_tool_frame, initial_pose_world_frame, initial_pose_quickcoupler_frame;
+  if (tool_id == "gripper"){
+    initial_pose_tool_frame.header.frame_id = GRIPPER_FRAME;
+  } else if (tool_id == "bucket"){
+    initial_pose_tool_frame.header.frame_id = BUCKET_FRAME;
+  }
+  initial_pose_tool_frame.pose.position.x = - quickcoupler_z; //translate the quickcoupler so that both locks match
+  initial_pose_tool_frame.pose.position.y = 0.0;
+  initial_pose_tool_frame.pose.position.z = distance_above_gripper;
+  initial_pose_tool_frame.pose.orientation.x = q[0];
+  initial_pose_tool_frame.pose.orientation.y = q[1];
+  initial_pose_tool_frame.pose.orientation.z = q[2];
+  initial_pose_tool_frame.pose.orientation.w = q[3];
 
   //allow collision between gripper group and quickcoupler --> eef parent link
-  this->allowGripperCollision(); //temp until cartesian motion function upgrade
+  this->allowToolCollision(tool_id); //temp until cartesian motion function upgrade to avoid wierd motion plan
 
-  //transform pose from gripper frame to world frame
-  transform_listener.waitForTransform(WORLD_FRAME,GRIPPER_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
-  transform_listener.transformPose(WORLD_FRAME,ros::Time(0), initial_pose_gripper_frame, GRIPPER_FRAME, initial_pose_world_frame);
-
+  //transform pose from gripper/bucket frame to world frame
+  if (tool_id == "gripper"){
+    transform_listener.waitForTransform(WORLD_FRAME,GRIPPER_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+    transform_listener.transformPose(WORLD_FRAME,ros::Time(0), initial_pose_tool_frame, GRIPPER_FRAME, initial_pose_world_frame);
+  } else if (tool_id == "bucket"){
+    transform_listener.waitForTransform(WORLD_FRAME,BUCKET_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+    transform_listener.transformPose(WORLD_FRAME,ros::Time(0), initial_pose_tool_frame, BUCKET_FRAME, initial_pose_world_frame);
+  }
   //visualize point
   //update vizualize function
 
@@ -1093,6 +1121,10 @@ bool akit_pick_place::attachGripper(){
     return false;
     exit(1);
   }
+  if (tool_id == "gripper"){
+    ROS_INFO_STREAM("Gripper Attached Successfully");
+  } else if (tool_id == "bucket"){
+    ROS_INFO_STREAM("Bucket Attached Successfully");
+  }
 
-  ROS_INFO_STREAM("Gripper Attached Successfully");
 }
