@@ -183,6 +183,10 @@ target_link_libraries(orientation_test_2 ${catkin_LIBRARIES})
 add_executable(gripper_attach src/gripper_attach.cpp src/akit_pick_place.cpp)
 target_link_libraries(gripper_attach ${catkin_LIBRARIES})
 
+add_executable(tool_exchange_test src/tool_exchange_test.cpp src/akit_pick_place.cpp)
+target_link_libraries(tool_exchange_test ${catkin_LIBRARIES})
+
+
 #############
 ## Install ##
 #############

@@ -1,7 +1,7 @@
 #include <akit_pick_place/akit_pick_place.h>
 
-double quickcoupler_z = 0.13;
-double quickcoupler_x = 0.05;
+double quickcoupler_z = 0.13;  //distance between quickcoupler frame origin and lock in z-direction
+double quickcoupler_x = 0.035; //distance between quickcoupler frame origin and edge in x-direction
 
 int main(int argc, char **argv){
 
@@ -9,6 +9,9 @@ int main(int argc, char **argv){
   ros::NodeHandle nh;
   ros::AsyncSpinner spinner(1);
   spinner.start();
+
+  akit_pick_place akit;
+  akit.attachGripper();
 
   ros::ServiceClient plannnig_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
 
@@ -34,15 +37,16 @@ int main(int argc, char **argv){
   planning_scene_srv.request.scene = planning_scene_msg;
   plannnig_scene_diff_client.call(planning_scene_srv);
 
+  tf::Quaternion q = tf::createQuaternionFromRPY(0.0,-M_PI/2,0.0);
   geometry_msgs::PoseStamped marker_pose;
   marker_pose.header.frame_id = "gripper_rotator";
-  marker_pose.pose.position.x = - quickcoupler_z;
+  marker_pose.pose.position.x = - quickcoupler_z; //translate the quickcoupler so that both locks match
   marker_pose.pose.position.y = 0.0;
   marker_pose.pose.position.z = 0.25; //adjust
-  marker_pose.pose.orientation.w = 0.707; //rotation 90d around y
-  marker_pose.pose.orientation.x = 0.0;
-  marker_pose.pose.orientation.y = -0.707;
-  marker_pose.pose.orientation.z = 0.0;
+  marker_pose.pose.orientation.w = q[3]; //rotation 90d around y
+  marker_pose.pose.orientation.x = q[0];
+  marker_pose.pose.orientation.y = q[1];
+  marker_pose.pose.orientation.z = q[2];
 
 
   geometry_msgs::PoseStamped marker_pose_in_world_frame;
@@ -83,12 +87,13 @@ int main(int argc, char **argv){
      akitGroup.execute(motionPlan);
 
    geometry_msgs::PoseStamped marker_pose_in_quickcoupler_frame;
-   //transform pose from gripper frame to chassis frame
+   //transform pose from chassis/world frame to quickcoupler frame
    listener.waitForTransform("quickcoupler","chassis", ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
    listener.transformPose("quickcoupler",ros::Time(0), marker_pose_in_world_frame, "chassis", marker_pose_in_quickcoupler_frame);
 
    marker_pose_in_quickcoupler_frame.pose.position.x -= 0.25 + quickcoupler_x;
 
+   //transform pose from quickcoupler frame to chassis/world frame
    listener.waitForTransform("chassis","quickcoupler", ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
    listener.transformPose("chassis",ros::Time(0), marker_pose_in_quickcoupler_frame, "quickcoupler", marker_pose_in_world_frame);
 
@@ -112,7 +117,6 @@ int main(int argc, char **argv){
    for (std::size_t i = 0; i < jointNames.size(); ++i){
      ROS_INFO("joint %s: %f", jointNames[i].c_str(), joint_group_positions[i]);
     }
-
 }
 
 

@@ -23,7 +23,9 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   akitJointModelGroup = akitGroup->getCurrentState()->getJointModelGroup(planning_group_);
   gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup(eef_group_);
   gripperState = gripperGroup->getCurrentState();
+  akitState = akitGroup->getCurrentState();
   gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
+  akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
   robotModelLoader.reset(new robot_model_loader::RobotModelLoader("robot_description"));
   robotModelPtr = robotModelLoader->getModel();
   planningScenePtr.reset(new planning_scene::PlanningScene(robotModelPtr));
@@ -51,7 +53,9 @@ akit_pick_place::akit_pick_place(){
   akitJointModelGroup = akitGroup->getCurrentState()->getJointModelGroup("e1_complete");
   gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup("gripper");
   gripperState = gripperGroup->getCurrentState();
+  akitState = akitGroup->getCurrentState();
   gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
+  akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
   robotModelLoader.reset(new robot_model_loader::RobotModelLoader("robot_description"));
   robotModelPtr = robotModelLoader->getModel();
   planningScenePtr.reset(new planning_scene::PlanningScene(robotModelPtr));
@@ -241,7 +245,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
     double step_size = covered_distance / number_of_steps;
 
     //testing if the orientation of the object is greater or lower than 45deg
-    double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
+    double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_) * sin(M_PI/2 - yaw_);
 
     //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
@@ -574,6 +578,17 @@ void akit_pick_place::allowObjectCollision(std::string object_id){
   planning_scene_diff_client.call(planning_scene_srv);
 }
 
+void akit_pick_place::allowGripperCollision(){ //temp until cartesian motion function upgrade
+  acm = acm = planningScenePtr->getAllowedCollisionMatrix();
+  acm.setEntry(EEF_PARENT_LINK,GRIPPER_FRAME, true);
+  acm.setEntry("stick",GRIPPER_FRAME,true);
+
+  acm.getMessage(planning_scene_msg_.allowed_collision_matrix);
+  planning_scene_msg_.is_diff = true;
+  planning_scene_srv.request.scene = planning_scene_msg_;
+  planning_scene_diff_client.call(planning_scene_srv);
+}
+
 //reset acm to restore object as a collision object
 void akit_pick_place::resetAllowedCollisionMatrix(std::string object_id){
   acm = planningScenePtr->getAllowedCollisionMatrix();
@@ -892,7 +907,7 @@ void akit_pick_place::addInteractiveMarker(geometry_msgs::Pose marker_position,
     i_marker.color.b = 0.5;
     i_marker.color.a = 1.0;
 
-    if (shape.type == shape_msgs::SolidPrimitive::BOX){
+    if (shape.type == shape_msgs::SolidPrimitive::BOX){ //fix for cuboids
       i_marker.type = visualization_msgs::Marker::CUBE;
       i_marker.scale.x = i_marker.scale.y = i_marker.scale.z = shape.dimensions[0] + 0.01; //cannot be same size as collision object, won't return feedback
     } else if (shape.type == shape_msgs::SolidPrimitive::CYLINDER){
@@ -998,4 +1013,86 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
     }
   }
   return true;
+}
+
+bool akit_pick_place::attachGripper(){
+  //variables
+  double quickcoupler_z = 0.13; //distance between quickcoupler frame origin and lock in z-direction
+  double quickcoupler_x = 0.035; //distance between quickcoupler frame origin and edge in x-direction
+  double distance_above_gripper = 0.25; //25 cm above gripper
+
+  tf::Quaternion q = tf::createQuaternionFromRPY(0.0,-M_PI/2,0.0); //rotate 90deg around y-axis
+  geometry_msgs::PoseStamped initial_pose_gripper_frame, initial_pose_world_frame, initial_pose_quickcoupler_frame;
+  initial_pose_gripper_frame.header.frame_id = GRIPPER_FRAME;
+  initial_pose_gripper_frame.pose.position.x = - quickcoupler_z; //translate the quickcoupler so that both locks match
+  initial_pose_gripper_frame.pose.position.y = 0.0;
+  initial_pose_gripper_frame.pose.position.z = distance_above_gripper;
+  initial_pose_gripper_frame.pose.orientation.x = q[0];
+  initial_pose_gripper_frame.pose.orientation.y = q[1];
+  initial_pose_gripper_frame.pose.orientation.z = q[2];
+  initial_pose_gripper_frame.pose.orientation.w = q[3];
+
+  //allow collision between gripper group and quickcoupler --> eef parent link
+  this->allowGripperCollision(); //temp until cartesian motion function upgrade
+
+  //transform pose from gripper frame to world frame
+  transform_listener.waitForTransform(WORLD_FRAME,GRIPPER_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+  transform_listener.transformPose(WORLD_FRAME,ros::Time(0), initial_pose_gripper_frame, GRIPPER_FRAME, initial_pose_world_frame);
+
+  //visualize point
+  //update vizualize function
+
+  //move to initial pose
+  akitGroup->setPoseTarget(initial_pose_world_frame.pose);
+  akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  if (akitSuccess){
+    akitGroup->execute(MotionPlan);
+    ROS_INFO_STREAM("Motion plan to initial attaching pose --> success");
+  } else {
+    ROS_INFO_STREAM("Failed to execute motion to initial attaching pose");
+    return false;
+    exit(1);
+  }
+
+  //transform initial pose from world frame to quickcoupler frame
+  transform_listener.waitForTransform(EEF_PARENT_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+  transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), initial_pose_world_frame, WORLD_FRAME, initial_pose_quickcoupler_frame);
+
+  //locking position
+  initial_pose_quickcoupler_frame.pose.position.x -= distance_above_gripper + quickcoupler_x;
+
+  //transform back to world frame
+  transform_listener.waitForTransform(WORLD_FRAME,EEF_PARENT_LINK, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+  transform_listener.transformPose(WORLD_FRAME,ros::Time(0), initial_pose_quickcoupler_frame, EEF_PARENT_LINK, initial_pose_world_frame);
+
+  //move to locking position
+  akitGroup->setPoseTarget(initial_pose_world_frame.pose);
+  akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  if (akitSuccess){
+    akitGroup->execute(MotionPlan);
+    ROS_INFO_STREAM("Motion plan to locking position --> success");
+  } else {
+    ROS_INFO_STREAM("Failed to execute motion to locking position");
+    return false;
+    exit(1);
+  }
+
+  //update joint current state
+  akitState = akitGroup->getCurrentState();
+  akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
+
+  //rotate quickcoupler +90deg
+  akitJointPositions[4] += M_PI/2;
+  akitGroup->setJointValueTarget(akitJointPositions);
+  akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  if (akitSuccess){
+    akitGroup->execute(MotionPlan);
+    ROS_INFO_STREAM("Rotation of quickcoupler --> success");
+  } else {
+    ROS_INFO_STREAM("Failed to rotate quickcoupler");
+    return false;
+    exit(1);
+  }
+
+  ROS_INFO_STREAM("Gripper Attached Successfully");
 }

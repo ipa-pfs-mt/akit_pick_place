@@ -72,9 +72,11 @@ private:
   moveit::planning_interface::MoveGroupInterface::Plan gripperMotionPlan;
   moveit_visual_tools::MoveItVisualToolsPtr visual_tools;
   moveit::core::RobotStatePtr gripperState;
+  moveit::core::RobotStatePtr akitState;
   moveit_msgs::PlanningScene planningSceneMsg;
   moveit_msgs::ApplyPlanningScene planningSceneSrv;
   std::vector<double> gripperJointPositions;
+  std::vector<double> akitJointPositions;
   const robot_state::JointModelGroup *akitJointModelGroup;
   const robot_state::JointModelGroup *gripperJointModelGroup;
   robot_model_loader::RobotModelLoaderPtr robotModelLoader;
@@ -139,6 +141,7 @@ public:
   bool closeGripper();
   bool executeCartesianMotion(bool direction);
   void allowObjectCollision(std::string object_id);
+  void allowGripperCollision();
   void resetAllowedCollisionMatrix(std::string object_id);
   bool pick(moveit_msgs::CollisionObject object_);
   bool place(moveit_msgs::CollisionObject object_);
@@ -149,6 +152,8 @@ public:
   moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name,  double block_size_x, double block_size_y, double block_size_z);
   void addInteractiveMarkers();
   void addGround();
+
+  bool attachGripper();
 
 };
 
