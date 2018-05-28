@@ -251,7 +251,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
     double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_) * sin(M_PI/2 - yaw_);
 
     //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
-    tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
+    tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //rotation to be only around z-axis
     for (double i = step_size; i <= covered_distance; i += step_size){
 
 
@@ -524,29 +524,49 @@ bool akit_pick_place::closeGripper(){
   return (gripperSuccess ? true : false);
 }
 
-bool akit_pick_place::executeCartesianMotion(bool direction){
+bool akit_pick_place::executeCartesianMotion(bool direction, double cartesian_distance, char axis){
 
   //UP = true, DOWN = false
-  geometry_msgs::PoseStamped pose_in_chassis_frame, pose_in_quickcoupler_frame;
+  geometry_msgs::PoseStamped pose_in_base_frame, pose_in_quickcoupler_frame;
 
-  pose_in_chassis_frame.pose = akitGroup->getCurrentPose(EEF_PARENT_LINK).pose; //chassis frame
-  pose_in_chassis_frame.header.frame_id = BASE_LINK; //pose stamped
+  pose_in_base_frame.pose = akitGroup->getCurrentPose(EEF_PARENT_LINK).pose; //chassis frame
+  pose_in_base_frame.header.frame_id = BASE_LINK; //pose stamped
 
   //transform from chassis frame to quickcoupler frame
   transform_listener.waitForTransform(EEF_PARENT_LINK, BASE_LINK, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
-  transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_chassis_frame, BASE_LINK, pose_in_quickcoupler_frame);
+  transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_base_frame, BASE_LINK, pose_in_quickcoupler_frame);
 
   if (!direction){        //downwards cartesian motion                 //adjust motion in quickcoupler frame
-      pose_in_quickcoupler_frame.pose.position.z -= GRIPPER_JAW_LENGTH;
-  } else {                //upwards cartesian motion
-      pose_in_quickcoupler_frame.pose.position.z += GRIPPER_JAW_LENGTH;
+    switch (axis){
+      case 'x':
+        pose_in_quickcoupler_frame.pose.position.x -= cartesian_distance;
+        break;
+      case 'y':
+        pose_in_quickcoupler_frame.pose.position.y -= cartesian_distance;
+        break;
+      case 'z':
+        pose_in_quickcoupler_frame.pose.position.z -= cartesian_distance;
+        break;
+    }
+   } else {                //upwards cartesian motion
+    switch (axis){
+      case 'x':
+        pose_in_quickcoupler_frame.pose.position.x += cartesian_distance;
+        break;
+      case 'y':
+        pose_in_quickcoupler_frame.pose.position.y += cartesian_distance;
+        break;
+      case 'z':
+        pose_in_quickcoupler_frame.pose.position.z += cartesian_distance;
+        break;
+    }
   }
 
-  //transform back
+  //transform back to base frame
   transform_listener.waitForTransform( BASE_LINK, EEF_PARENT_LINK, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
-  transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_quickcoupler_frame, EEF_PARENT_LINK, pose_in_chassis_frame);
+  transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_quickcoupler_frame, EEF_PARENT_LINK, pose_in_base_frame);
 
-  waypoints[0] = pose_in_chassis_frame.pose;
+  waypoints[0] = pose_in_base_frame.pose;
   const double jump_threshold = 0.0;
   const double eef_step = 0.01;
   akitGroup->setMaxVelocityScalingFactor(0.1);
@@ -582,13 +602,13 @@ void akit_pick_place::allowObjectCollision(std::string object_id){
 }
 
 //allow collision during tool exchange
-void akit_pick_place::allowToolCollision(std::string tool_id){  //temp until cartesian motion function upgrade
+void akit_pick_place::allowToolCollision(std::string tool_id){
   acm = acm = planningScenePtr->getAllowedCollisionMatrix();
   std::transform(tool_id.begin(), tool_id.end(), tool_id.begin(), ::tolower);
 
   if (tool_id == "bucket"){
     acm.setEntry(EEF_PARENT_LINK,BUCKET_FRAME, true);
-    acm.setEntry("stick",BUCKET_FRAME,true);
+    acm.setEntry("stick",BUCKET_FRAME,true);  //allow stick so that motion plan is faster to find --> no actual collision
     acm.setEntry("bucket_lever_2",BUCKET_FRAME,true);
   } else if (tool_id == "gripper"){
     acm.setEntry(EEF_PARENT_LINK,GRIPPER_FRAME, true);
@@ -687,7 +707,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   }
 
   //cartesian motion downwards
-  if (!this->executeCartesianMotion(DOWN)){
+  if (!this->executeCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
     ROS_ERROR("Failed to execute downwards cartesian motion");
     return false;
     exit(1);
@@ -714,7 +734,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   }
 
   //cartesian motion upwards (post-grasp position)
-  if (!this->executeCartesianMotion(UP)){
+  if (!this->executeCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
     ROS_ERROR("Failed to execute upwards cartesian motion");
     return false;
     exit(1);
@@ -780,7 +800,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   grasp_pose_vector.clear();
 
   //cartesian motion downwards
-  if(!this->executeCartesianMotion(DOWN)){
+  if(!this->executeCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){ //experiment and change gripper_jaw_length --> drop the object more tham place it
     ROS_ERROR("Failed to execute downwards cartesian motion");
     return false;
     exit(1);
@@ -804,7 +824,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   }
 
   //cartesian motion upwards
-  if(!this->executeCartesianMotion(UP)){
+  if(!this->executeCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
     ROS_ERROR("Failed to execute upwards cartesian motion");
     return false;
     exit(1);
@@ -1030,7 +1050,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
 bool akit_pick_place::attachTool(std::string tool_id){
 
   std::transform(tool_id.begin(), tool_id.end(), tool_id.begin(), ::tolower);
-  if (tool_id != "gripper" || tool_id != "bucket"){
+  if (tool_id != "gripper" && tool_id != "bucket"){
     ROS_ERROR_STREAM("Unknown tool, please write correct tool name");
     return false;
     exit(1);
@@ -1042,7 +1062,7 @@ bool akit_pick_place::attachTool(std::string tool_id){
   double distance_above_gripper = 0.25; //25 cm above gripper
 
   tf::Quaternion q = tf::createQuaternionFromRPY(0.0,-M_PI/2,0.0); //rotate 90deg around y-axis
-  geometry_msgs::PoseStamped initial_pose_tool_frame, initial_pose_world_frame, initial_pose_quickcoupler_frame;
+  geometry_msgs::PoseStamped initial_pose_tool_frame, initial_pose_base_frame;
   if (tool_id == "gripper"){
     initial_pose_tool_frame.header.frame_id = GRIPPER_FRAME;
   } else if (tool_id == "bucket"){
@@ -1057,53 +1077,34 @@ bool akit_pick_place::attachTool(std::string tool_id){
   initial_pose_tool_frame.pose.orientation.w = q[3];
 
   //allow collision between gripper group and quickcoupler --> eef parent link
-  this->allowToolCollision(tool_id); //temp until cartesian motion function upgrade to avoid wierd motion plan
+  this->allowToolCollision(tool_id);
 
-  //transform pose from gripper/bucket frame to world frame
+  //transform pose from gripper/bucket frame to base link frame
   if (tool_id == "gripper"){
-    transform_listener.waitForTransform(WORLD_FRAME,GRIPPER_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
-    transform_listener.transformPose(WORLD_FRAME,ros::Time(0), initial_pose_tool_frame, GRIPPER_FRAME, initial_pose_world_frame);
+    transform_listener.waitForTransform(BASE_LINK,GRIPPER_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+    transform_listener.transformPose(BASE_LINK,ros::Time(0), initial_pose_tool_frame, GRIPPER_FRAME, initial_pose_base_frame);
   } else if (tool_id == "bucket"){
-    transform_listener.waitForTransform(WORLD_FRAME,BUCKET_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
-    transform_listener.transformPose(WORLD_FRAME,ros::Time(0), initial_pose_tool_frame, BUCKET_FRAME, initial_pose_world_frame);
+    transform_listener.waitForTransform(BASE_LINK,BUCKET_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
+    transform_listener.transformPose(BASE_LINK,ros::Time(0), initial_pose_tool_frame, BUCKET_FRAME, initial_pose_base_frame);
   }
+
   //visualize point
-  //update vizualize function
+  //update visualize function
 
   //move to initial pose
-  akitGroup->setPoseTarget(initial_pose_world_frame.pose);
+  akitGroup->setPoseTarget(initial_pose_base_frame.pose);
   akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
   if (akitSuccess){
     akitGroup->execute(MotionPlan);
     ROS_INFO_STREAM("Motion plan to initial attaching pose --> success");
   } else {
-    ROS_INFO_STREAM("Failed to execute motion to initial attaching pose");
+    ROS_ERROR_STREAM("Failed to execute motion to initial attaching pose");
     return false;
     exit(1);
   }
 
-  //transform initial pose from world frame to quickcoupler frame
-  transform_listener.waitForTransform(EEF_PARENT_LINK,WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
-  transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), initial_pose_world_frame, WORLD_FRAME, initial_pose_quickcoupler_frame);
-
-  //locking position
-  initial_pose_quickcoupler_frame.pose.position.x -= distance_above_gripper + quickcoupler_x;
-
-  //transform back to world frame
-  transform_listener.waitForTransform(WORLD_FRAME,EEF_PARENT_LINK, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
-  transform_listener.transformPose(WORLD_FRAME,ros::Time(0), initial_pose_quickcoupler_frame, EEF_PARENT_LINK, initial_pose_world_frame);
-
-  //move to locking position
-  akitGroup->setPoseTarget(initial_pose_world_frame.pose);
-  akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  if (akitSuccess){
-    akitGroup->execute(MotionPlan);
-    ROS_INFO_STREAM("Motion plan to locking position --> success");
-  } else {
-    ROS_INFO_STREAM("Failed to execute motion to locking position");
-    return false;
-    exit(1);
-  }
+  //execute cartesian motion in -x axis direction
+  this->executeCartesianMotion(DOWN, distance_above_gripper + quickcoupler_x, 'x');
 
   //update joint current state
   akitState = akitGroup->getCurrentState();
@@ -1117,7 +1118,7 @@ bool akit_pick_place::attachTool(std::string tool_id){
     akitGroup->execute(MotionPlan);
     ROS_INFO_STREAM("Rotation of quickcoupler --> success");
   } else {
-    ROS_INFO_STREAM("Failed to rotate quickcoupler");
+    ROS_ERROR_STREAM("Failed to rotate quickcoupler");
     return false;
     exit(1);
   }

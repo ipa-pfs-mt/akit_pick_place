@@ -140,7 +140,7 @@ public:
   bool rotateGripper(moveit_msgs::CollisionObject object_);
   bool openGripper();
   bool closeGripper();
-  bool executeCartesianMotion(bool direction);
+  bool executeCartesianMotion(bool direction, double cartesian_distance, char axis);
   void allowObjectCollision(std::string object_id);
   void allowToolCollision(std::string tool_id);
   void resetAllowedCollisionMatrix(std::string object_id);

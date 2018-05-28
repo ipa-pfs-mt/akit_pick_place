@@ -7,6 +7,5 @@ int main(int argc, char **argv){
   spinner.start();
 
   akit_pick_place akit;
-  akit.attachTool("bucket");
-
+  akit.attachTool("gripper");
 }
