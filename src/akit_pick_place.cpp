@@ -176,7 +176,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
 
      //visualization of grasp points
     if(visualize){
-      this->visualizeGrasps();
+      this->visualizeGrasps(grasp_pose_vector, BASE_LINK);
     }
     return true;
 
@@ -206,7 +206,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
       grasp_pose_vector.push_back(grasp_pose);
     }
     if(visualize){
-      this->visualizeGrasps();
+      this->visualizeGrasps(grasp_pose_vector, BASE_LINK);
     }
     return true;
   }
@@ -275,7 +275,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
       }
 
     if(visualize){
-      this->visualizeGrasps();
+      this->visualizeGrasps(grasp_pose_vector, BASE_LINK);
     }
     return true;
   } else { //side grasps
@@ -303,7 +303,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
       grasp_pose_vector.push_back(grasp_pose);
     }
     if(visualize){
-      this->visualizeGrasps();
+      this->visualizeGrasps(grasp_pose_vector, BASE_LINK);
     }
     return true;
   }
@@ -370,7 +370,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     }
 
     if(visualize){
-      this->visualizeGrasps();
+      this->visualizeGrasps(grasp_pose_vector, BASE_LINK);
     }
     return true;
 
@@ -399,17 +399,17 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
       grasp_pose_vector.push_back(grasp_pose);
     }
     if(visualize){
-      this->visualizeGrasps();
+      this->visualizeGrasps(grasp_pose_vector, BASE_LINK);
     }
     return true;
   }
 }
 
-bool akit_pick_place::visualizeGrasps(){
+bool akit_pick_place::visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame){
 
   ROS_INFO_STREAM("---------- *Grasp Points visualization* ----------");
   uint32_t shape = visualization_msgs::Marker::ARROW;
-  marker.header.frame_id = BASE_LINK; //world frame ?? --> test
+  marker.header.frame_id = frame;
   marker.header.stamp = ros::Time::now();
   marker.ns = "basic_shapes";
   marker.type = shape;
@@ -421,10 +421,10 @@ bool akit_pick_place::visualizeGrasps(){
   marker.color.b = 1.0f;
   marker.color.a = 1.0;
   marker.lifetime = ros::Duration();
-  for (int i = 0; i < grasp_pose_vector.size(); ++i){
+  for (int i = 0; i < points.size(); ++i){
      marker.id = i;
      marker.action = visualization_msgs::Marker::ADD;
-     marker.pose = grasp_pose_vector[i];
+     marker.pose = points[i];
      while (marker_pub.getNumSubscribers() < 1)
          {
            ROS_WARN_ONCE("Please create a subscriber to the marker");
@@ -1089,7 +1089,13 @@ bool akit_pick_place::attachTool(std::string tool_id){
   }
 
   //visualize point
-  //update visualize function
+  std::vector<geometry_msgs::Pose> visualize_point;
+  visualize_point.push_back(initial_pose_tool_frame.pose);
+  if (tool_id == "gripper"){
+     this->visualizeGrasps(visualize_point, GRIPPER_FRAME);
+  } else if (tool_id == "bucket"){
+     this->visualizeGrasps(visualize_point, BUCKET_FRAME);
+  }
 
   //move to initial pose
   akitGroup->setPoseTarget(initial_pose_base_frame.pose);
