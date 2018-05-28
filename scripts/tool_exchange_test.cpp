@@ -8,4 +8,6 @@ int main(int argc, char **argv){
 
   akit_pick_place akit;
   akit.attachTool("gripper");
+
+  //akit.detachTool("gripper");
 }

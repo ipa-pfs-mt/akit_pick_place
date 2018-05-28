@@ -407,7 +407,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
 
 bool akit_pick_place::visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame){
 
-  ROS_INFO_STREAM("---------- *Grasp Points visualization* ----------");
+  ROS_INFO_STREAM("---------- *points visualization* ----------");
   uint32_t shape = visualization_msgs::Marker::ARROW;
   marker.header.frame_id = frame;
   marker.header.stamp = ros::Time::now();
@@ -1076,7 +1076,7 @@ bool akit_pick_place::attachTool(std::string tool_id){
   initial_pose_tool_frame.pose.orientation.z = q[2];
   initial_pose_tool_frame.pose.orientation.w = q[3];
 
-  //allow collision between gripper group and quickcoupler --> eef parent link
+  //allow collision between tool group and quickcoupler --> eef parent link
   this->allowToolCollision(tool_id);
 
   //transform pose from gripper/bucket frame to base link frame
@@ -1109,12 +1109,18 @@ bool akit_pick_place::attachTool(std::string tool_id){
     exit(1);
   }
 
+  //promt user
+  visual_tools->prompt("proceed ? ");
+
   //execute cartesian motion in -x axis direction
   this->executeCartesianMotion(DOWN, distance_above_gripper + quickcoupler_x, 'x');
 
   //update joint current state
   akitState = akitGroup->getCurrentState();
   akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
+
+  //promt user
+  visual_tools->prompt("proceed ? ");
 
   //rotate quickcoupler +90deg
   akitJointPositions[4] += M_PI/2;
@@ -1128,10 +1134,60 @@ bool akit_pick_place::attachTool(std::string tool_id){
     return false;
     exit(1);
   }
+
+  //activate lock --> no control in rviz
+
   if (tool_id == "gripper"){
     ROS_INFO_STREAM("Gripper Attached Successfully");
+    return true;
   } else if (tool_id == "bucket"){
     ROS_INFO_STREAM("Bucket Attached Successfully");
+    return true;
+  }
+}
+
+bool akit_pick_place::detachTool(std::string tool_id){
+
+  std::transform(tool_id.begin(), tool_id.end(), tool_id.begin(), ::tolower);
+  if (tool_id != "gripper" && tool_id != "bucket"){
+    ROS_ERROR_STREAM("Unknown tool, please write correct tool name");
+    return false;
+    exit(1);
+  }
+  //variables
+  double quickcoupler_x = 0.035; //distance between quickcoupler frame origin and edge in x-direction
+  double distance_above_gripper = 0.25; //25 cm above gripper
+
+  //allow collision between tool group and quickcoupler --> eef parent link
+  this->allowToolCollision(tool_id);
+
+  //de-activate lock --> no control in rviz
+
+  //update joint current state
+  akitState = akitGroup->getCurrentState();
+  akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
+
+  //rotate quickcoupler -90deg
+  akitJointPositions[4] -= M_PI/2;
+  akitGroup->setJointValueTarget(akitJointPositions);
+  akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  if (akitSuccess){
+    akitGroup->execute(MotionPlan);
+    ROS_INFO_STREAM("Rotation of quickcoupler --> success");
+  } else {
+    ROS_ERROR_STREAM("Failed to rotate quickcoupler");
+    return false;
+    exit(1);
   }
 
+  //execute cartesian motion in +x axis direction
+  this->executeCartesianMotion(UP, distance_above_gripper + quickcoupler_x, 'x');
+
+  if (tool_id == "gripper"){
+    ROS_INFO_STREAM("Gripper Detached Successfully");
+    return true;
+  } else if (tool_id == "bucket"){
+    ROS_INFO_STREAM("Bucket Detached Successfully");
+    return true;
+  }
 }
