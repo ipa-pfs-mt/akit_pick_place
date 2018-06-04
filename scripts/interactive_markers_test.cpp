@@ -10,7 +10,7 @@ int main(int argc, char **argv){
   ros::AsyncSpinner spinner(1);
   spinner.start();
   akit_pick_place akit;
-  akit.addGround();
+  //akit.addGround();
 
   //create object pose
   geometry_msgs::Pose blockPose;

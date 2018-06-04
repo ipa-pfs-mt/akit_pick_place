@@ -12,6 +12,7 @@ int main(int argc, char**argv){
   ros::AsyncSpinner spinner(1);
   spinner.start();
   akit_pick_place akit;
+  //akit.setWorldFrame("world");
 
   //std::string BASE_LINK = akit.getBaseLink();
   moveit::planning_interface::PlanningSceneInterface planningSceneInterface;
@@ -38,7 +39,7 @@ int main(int argc, char**argv){
 
   //create object pose
   geometry_msgs::Pose blockPose;
-  blockPose.position.x = -3.0;
+  blockPose.position.x = 2.5;
   blockPose.position.y = 2.0;
   blockPose.position.z = 0.17;
   blockPose.orientation.x = 0.0;

@@ -48,7 +48,7 @@ private:
   //cartesian motion
   bool gripperSuccess;
   bool akitSuccess;
-  bool setFromGraspGenerator;
+  bool FromGraspGenerator;
   bool side_grasps;
 
   //akit pick & cartesian stuff
@@ -118,6 +118,7 @@ public:
   void setGripperLength(double gripper_length_);
   void setGripperSideLength(double gripper_side_length_);
   void setGripperJawLength(double gripper_jaw_length_);
+  void setFromGraspGenerator(bool grasp_generator);
 
   std::string getPlanningGroup();
   std::string getGripperGroup();
@@ -140,7 +141,8 @@ public:
   bool rotateGripper(moveit_msgs::CollisionObject object_);
   bool openGripper();
   bool closeGripper();
-  bool executeCartesianMotion(bool direction, double cartesian_distance, char axis);
+  bool executeAxisCartesianMotion(bool direction, double cartesian_distance, char axis);
+  bool planAndExecute(std::vector<geometry_msgs::Pose> positions, std::string position);
   void allowObjectCollision(std::string object_id);
   void allowToolCollision(std::string tool_id);
   void resetAllowedCollisionMatrix(std::string object_id);

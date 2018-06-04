@@ -9,11 +9,13 @@ int main(int argc, char**argv){
   ros::AsyncSpinner spinner(1);
   spinner.start();
   akit_pick_place akit;
+  akit.setFromGraspGenerator(false);
 
   moveit::planning_interface::PlanningSceneInterface planningSceneInterface;
 
   //create collision blocks
   moveit_msgs::CollisionObject Block1;
+  Block1.header.frame_id = "odom_combined";
   Block1.id = "block1";
   shape_msgs::SolidPrimitive primitive;
   primitive.type = primitive.BOX;
@@ -24,18 +26,22 @@ int main(int argc, char**argv){
   Block1.primitives.push_back(primitive);
 
   moveit_msgs::CollisionObject Block2;
+  Block2.header.frame_id = "odom_combined";
   Block2.id = "block2";
   Block2.primitives.push_back((primitive));
 
   moveit_msgs::CollisionObject Block3;
+  Block3.header.frame_id = "odom_combined";
   Block3.id = "block3";
   Block3.primitives.push_back((primitive));
 
   moveit_msgs::CollisionObject Block4;
+  Block4.header.frame_id = "odom_combined";
   Block4.id = "block4";
   Block4.primitives.push_back((primitive));
 
   moveit_msgs::CollisionObject Block5;
+  Block5.header.frame_id = "odom_combined";
   Block5.id = "block5";
   Block5.primitives.push_back((primitive));
 

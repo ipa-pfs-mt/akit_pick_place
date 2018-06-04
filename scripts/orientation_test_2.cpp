@@ -33,7 +33,7 @@ int main(int argc, char **argv){
 
     geometry_msgs::Pose pose;
     pose.position.x = fRand(-2.0,2.0);
-    pose.position.y = fRand(2.0,3.0);
+    pose.position.y = fRand(2.2,3.0);
     pose.position.z = 0.25;
     pose.orientation.w = q[0];
     pose.orientation.x = q[1];

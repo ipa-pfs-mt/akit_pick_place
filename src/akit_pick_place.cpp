@@ -17,7 +17,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   GRIPPER_JAW_LENGTH = gripper_jaw_length_;
   GRIPPER_SIDE_LENGTH = gripper_side_length_;
   EEF_PARENT_LINK = eef_parent_link_;
-  setFromGraspGenerator = set_from_grasp_generator_;
+  FromGraspGenerator = set_from_grasp_generator_;
   side_grasps = false;
   waypoints = std::vector<geometry_msgs::Pose>(1);
   akitGroup = new moveit::planning_interface::MoveGroupInterface(planning_group_);
@@ -48,7 +48,7 @@ akit_pick_place::akit_pick_place(){
   GRIPPER_LENGTH = 1.05;
   GRIPPER_JAW_LENGTH = 0.30;
   GRIPPER_SIDE_LENGTH = 0.20;
-  setFromGraspGenerator = true;
+  FromGraspGenerator = true;
   side_grasps = false;
   waypoints = std::vector<geometry_msgs::Pose>(1);
   akitGroup = new moveit::planning_interface::MoveGroupInterface("e1_complete");
@@ -68,6 +68,9 @@ akit_pick_place::akit_pick_place(){
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
 }
 akit_pick_place::~akit_pick_place(){
+}
+void akit_pick_place::setFromGraspGenerator(bool grasp_generator){
+  FromGraspGenerator = grasp_generator;
 }
 void akit_pick_place::setBaseLink(std::string base_link_){
   BASE_LINK = base_link_;
@@ -434,6 +437,10 @@ bool akit_pick_place::visualizeGrasps(std::vector<geometry_msgs::Pose> points, s
    }
 }
 bool akit_pick_place::rotateGripper(){
+
+  gripperState = gripperGroup->getCurrentState();
+  gripperGroup->setStartState(*gripperState);
+
   gripperJointPositions[0] += M_PI / 15; //gripper rotator joint
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
@@ -447,6 +454,9 @@ bool akit_pick_place::rotateGripper(){
 }
 
 bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //needs adjusting !!(rotation in y-axis has problems)
+
+  gripperState = gripperGroup->getCurrentState();
+  gripperGroup->setStartState(*gripperState);
 
   geometry_msgs::PoseStamped object_in_world_frame, object_in_gripper_frame;
   object_in_world_frame.pose = object_.primitive_poses[0];
@@ -481,6 +491,10 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
  }
 
 bool akit_pick_place::openGripper(){
+
+  gripperState = gripperGroup->getCurrentState();
+  gripperGroup->setStartState(*gripperState);
+
   gripperJointPositions[1] = 1.0;
   gripperJointPositions[2] = 1.0;
   gripperGroup->setJointValueTarget(gripperJointPositions);
@@ -494,6 +508,10 @@ bool akit_pick_place::openGripper(){
 }
 
 bool akit_pick_place::closeGripper(){
+
+  gripperState = gripperGroup->getCurrentState();
+  gripperGroup->setStartState(*gripperState);
+
   gripperJointPositions[1] = 0.5; //relate to object length
   gripperJointPositions[2] = 0.5;
   gripperGroup->setJointValueTarget(gripperJointPositions);
@@ -524,7 +542,11 @@ bool akit_pick_place::closeGripper(){
   return (gripperSuccess ? true : false);
 }
 
-bool akit_pick_place::executeCartesianMotion(bool direction, double cartesian_distance, char axis){
+bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesian_distance, char axis){
+
+  //update start state to current state
+  akitState = akitGroup->getCurrentState();
+  akitGroup->setStartState(*akitState);
 
   //UP = true, DOWN = false
   geometry_msgs::PoseStamped pose_in_base_frame, pose_in_quickcoupler_frame;
@@ -532,11 +554,11 @@ bool akit_pick_place::executeCartesianMotion(bool direction, double cartesian_di
   pose_in_base_frame.pose = akitGroup->getCurrentPose(EEF_PARENT_LINK).pose; //chassis frame
   pose_in_base_frame.header.frame_id = BASE_LINK; //pose stamped
 
-  //transform from chassis frame to quickcoupler frame
+  //transform from base link frame to quickcoupler frame
   transform_listener.waitForTransform(EEF_PARENT_LINK, BASE_LINK, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
   transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_base_frame, BASE_LINK, pose_in_quickcoupler_frame);
 
-  if (!direction){        //downwards cartesian motion                 //adjust motion in quickcoupler frame
+  if (!direction){        //downwards cartesian motion in quickcoupler frame
     switch (axis){
       case 'x':
         pose_in_quickcoupler_frame.pose.position.x -= cartesian_distance;
@@ -548,7 +570,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction, double cartesian_di
         pose_in_quickcoupler_frame.pose.position.z -= cartesian_distance;
         break;
     }
-   } else {                //upwards cartesian motion
+   } else {                //upwards cartesian motion in quickcoupler frame
     switch (axis){
       case 'x':
         pose_in_quickcoupler_frame.pose.position.x += cartesian_distance;
@@ -561,7 +583,6 @@ bool akit_pick_place::executeCartesianMotion(bool direction, double cartesian_di
         break;
     }
   }
-
   //transform back to base frame
   transform_listener.waitForTransform( BASE_LINK, EEF_PARENT_LINK, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
   transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_quickcoupler_frame, EEF_PARENT_LINK, pose_in_base_frame);
@@ -574,7 +595,7 @@ bool akit_pick_place::executeCartesianMotion(bool direction, double cartesian_di
   double fraction  = akitGroup->computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
   ROS_INFO_STREAM("Visualizing Cartesian Motion plan:  " << (fraction * 100.0) <<"%% achieved");
 
-  if (fraction * 100 > 40.0){
+  if (fraction * 100 >= 40.0){
       MotionPlan.trajectory_ = trajectory;
       ROS_INFO_STREAM("====== 3. Executing Cartesian Motion ======");
       akitSuccess = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -584,6 +605,50 @@ bool akit_pick_place::executeCartesianMotion(bool direction, double cartesian_di
       ROS_ERROR("Cannot execute cartesian motion, plan < 50 %%");
       return false;
     }
+}
+
+bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> positions, std::string position){
+
+  int count = 0;
+  bool executed;
+  bool found_ik;
+
+  for(int i = 0; i < positions.size(); ++i){
+
+    //convert positions from cartesian space to joint space to work with all planners
+    found_ik =  akitState->setFromIK(akitJointModelGroup,positions[i], 10,0.0);
+    if (found_ik)
+    {
+      akitState->copyJointGroupPositions(akitJointModelGroup, akitJointPositions);
+      akitGroup->setJointValueTarget(akitJointPositions);
+    } else
+    {
+      ROS_ERROR_STREAM("Failed to find inverse kinematics for " << position << " position");
+    }
+    //akitGroup->setPoseTarget(positions[i]);
+    akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    if(!akitSuccess){
+      ROS_INFO_STREAM("Motion Planning to " << position << " position ---");
+      count++;
+        if (count == positions.size()){
+          ROS_ERROR_STREAM("Failed to plan to " << position << " position");
+          return false;
+          exit(1);
+      }
+    } else {
+      this->displayTrajectory(MotionPlan,positions[i], position + std::to_string(count), rviz_visual_tools::colors::LIME_GREEN);
+      executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+      ROS_INFO_STREAM("Executing Motion plan: " << (executed ? "Executed" : "FAILED"));
+      if (!executed){
+        ROS_ERROR_STREAM("Failed to execute motion plan to " << position << " position");
+        return false;
+        exit(1);
+      } else {
+       return true;
+       break;
+      }
+    }
+  }
 }
 
 //allow gripper to touch object to be picked
@@ -638,53 +703,30 @@ void akit_pick_place::resetAllowedCollisionMatrix(std::string object_id){
 
 bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   ROS_INFO_STREAM("---------- *Starting pick routine* ----------");
+
+  //update start state to current state
+  akitState = akitGroup->getCurrentState();
+  akitGroup->setStartState(*akitState);
+
   //move from home position to pre-grasp position
+  if(FromGraspGenerator){
 
-  int count = 0;
-  bool executed;
-
-  if(setFromGraspGenerator){
-    for(int i = 0; i < grasp_pose_vector.size(); ++i){
-      akitGroup->setPoseTarget(grasp_pose_vector[i]);
-      akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      if(!akitSuccess){
-        ROS_INFO_STREAM("Motion Planning to Pre-Grasp Position --------");
-        count++;
-          if (count == grasp_pose_vector.size()){
-            ROS_ERROR("Failed to plan to pre-grasp position");
-            return false;
-            exit(1);
-        }
-      } else {
-        this->displayTrajectory(MotionPlan,grasp_pose_vector[i],"pre_grasp_pose " + std::to_string(count), rviz_visual_tools::colors::LIME_GREEN);
-        executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-        ROS_INFO_STREAM("Executing Motion plan: " << (executed ? "Executed" : "FAILED"));
-        if (!executed){
-          ROS_ERROR("Failed to execute motion plan to pre-grasp position");
-          return false;
-          exit(1);
-        } else {
-         break;
-        }
-      }
-    }
-  } else { //if grasp poses are entered from blender (remove later if not needed--> needed if object is not a box,cuboid,cylinder!)
-    akitGroup->setPoseTarget(pre_grasp_pose); //make setters to bool
-    akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    ROS_INFO_STREAM("Motion Planning to Pre-Grasp Position: " << (akitSuccess ? "Planned" : "FAILED"));
-    if (!akitSuccess){
-      ROS_ERROR("Failed to plan to pre-grasp position");
+    //loop through all grasp poses
+    if(!this->planAndExecute(grasp_pose_vector, "pre_grasp")){
+      ROS_ERROR("Failed to plan and execute");
       return false;
       exit(1);
-    } else {
-      this->displayTrajectory(MotionPlan,pre_grasp_pose,"pre_grasp_pose",rviz_visual_tools::colors::LIME_GREEN);
-      executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      ROS_INFO_STREAM("Executing Motion plan: " << (executed ? "Executed" : "FAILED"));
-      if (!executed){
-        ROS_ERROR("Failed to execute motion plan to pre-grasp position");
-        return false;
-        exit(1);
-      }
+    }
+
+  } else { //if grasp poses are entered separatly from blender(needed if object is not a box,cuboid,cylinder!)
+
+    std::vector<geometry_msgs::Pose> positions;
+    positions.push_back(pre_grasp_pose);
+
+    if(!this->planAndExecute(positions, "pre-grasp")){
+      ROS_ERROR("Failed to plan and execute");
+      return false;
+      exit(1);
     }
   }
 
@@ -707,7 +749,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   }
 
   //cartesian motion downwards
-  if (!this->executeCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
+  if (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
     ROS_ERROR("Failed to execute downwards cartesian motion");
     return false;
     exit(1);
@@ -734,7 +776,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   }
 
   //cartesian motion upwards (post-grasp position)
-  if (!this->executeCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
+  if (!this->executeAxisCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
     ROS_ERROR("Failed to execute upwards cartesian motion");
     return false;
     exit(1);
@@ -746,61 +788,38 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
 
 bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   ROS_INFO_STREAM("---------- *Starting place routine* ----------");
+
+  //update start state to current state
+  akitState = akitGroup->getCurrentState();
+  akitGroup->setStartState(*akitState);
+
   //moving from post-grasp position to pre-place position
+  if(FromGraspGenerator){
 
-  int count = 0;
-  bool executed;
-
-  if(setFromGraspGenerator){
-    for(int i = 0; i < grasp_pose_vector.size(); ++i){
-      akitGroup->setPoseTarget(grasp_pose_vector[i]);
-      akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      if(!akitSuccess){
-        ROS_INFO_STREAM("Motion Planning to Pre-Place Position --------");
-        count++;
-          if (count == grasp_pose_vector.size()){
-            ROS_ERROR("Failed to plan to pre-Place position");
-            return false;
-            exit(1);
-        }
-      } else {
-        this->displayTrajectory(MotionPlan,grasp_pose_vector[i],"pre_place_pose " + std::to_string(count), rviz_visual_tools::colors::MAGENTA);
-        executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-        ROS_INFO_STREAM("Executing Motion plan: " << (executed ? "Executed" : "FAILED"));
-        if (!executed){
-          ROS_ERROR("Failed to execute motion plan to pre-place position");
-          return false;
-          exit(1);
-        } else {
-         break;
-        }
-      }
+    //loop through all grasp poses
+    if(!this->planAndExecute(grasp_pose_vector, "pre_place")){
+      ROS_ERROR("Failed to plan and execute");
+      return false;
+      exit(1);
     }
-  } else { //if place poses are entered from blender (remove later if not needed --> needed if object is not a box,cuboid,cylinder!)
-      akitGroup->setPoseTarget(pre_place_pose);
-      akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      ROS_INFO_STREAM("Motion Planning to Pre-Place Position: " << (akitSuccess ? "Planned" : "FAILED"));
-      if (!akitSuccess){
-        ROS_ERROR("Failed to plan to pre-place position");
-        return false;
-        exit(1);
-      } else {
-        this->displayTrajectory(MotionPlan,pre_place_pose,"pre_place_pose",rviz_visual_tools::colors::MAGENTA);
-        executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-        ROS_INFO_STREAM("Executing Motion Plan: " << (executed ? "Executed" : "FAILED"));
-        if (!executed){
-          ROS_ERROR("Failed to execute motion plan to pre-place position");
-          return false;
-          exit(1);
-        }
-      }
+
+  } else { //if place poses are entered separatly from blender(needed if object is not a box,cuboid,cylinder!)
+
+    std::vector<geometry_msgs::Pose> positions;
+    positions.push_back(pre_place_pose);
+
+    if(!this->planAndExecute(positions, "pre_grasp")){
+      ROS_ERROR("Failed to plan and execute");
+      return false;
+      exit(1);
+    }
   }
 
   //clear grasp pose vector
   grasp_pose_vector.clear();
 
   //cartesian motion downwards
-  if(!this->executeCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){ //experiment and change gripper_jaw_length --> drop the object more tham place it
+  if(!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){ //experiment and change gripper_jaw_length --> drop the object rather than place it
     ROS_ERROR("Failed to execute downwards cartesian motion");
     return false;
     exit(1);
@@ -824,7 +843,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   }
 
   //cartesian motion upwards
-  if(!this->executeCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
+  if(!this->executeAxisCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
     ROS_ERROR("Failed to execute upwards cartesian motion");
     return false;
     exit(1);
@@ -1058,7 +1077,7 @@ bool akit_pick_place::attachTool(std::string tool_id){
 
   //variables
   double quickcoupler_z = 0.13; //distance between quickcoupler frame origin and lock in z-direction
-  double quickcoupler_x = 0.035; //distance between quickcoupler frame origin and edge in x-direction
+  double quickcoupler_x = 0.035; //distance between quickcoupler frame origin and edge in x-direction //
   double distance_above_gripper = 0.25; //25 cm above gripper
 
   tf::Quaternion q = tf::createQuaternionFromRPY(0.0,-M_PI/2,0.0); //rotate 90deg around y-axis
@@ -1113,7 +1132,7 @@ bool akit_pick_place::attachTool(std::string tool_id){
   visual_tools->prompt("proceed ? ");
 
   //execute cartesian motion in -x axis direction
-  this->executeCartesianMotion(DOWN, distance_above_gripper + quickcoupler_x, 'x');
+  this->executeAxisCartesianMotion(DOWN, distance_above_gripper + quickcoupler_x, 'x');
 
   //update joint current state
   akitState = akitGroup->getCurrentState();
@@ -1145,6 +1164,7 @@ bool akit_pick_place::attachTool(std::string tool_id){
     return true;
   }
 }
+
 
 bool akit_pick_place::detachTool(std::string tool_id){
 
@@ -1181,7 +1201,7 @@ bool akit_pick_place::detachTool(std::string tool_id){
   }
 
   //execute cartesian motion in +x axis direction
-  this->executeCartesianMotion(UP, distance_above_gripper + quickcoupler_x, 'x');
+  this->executeAxisCartesianMotion(UP, distance_above_gripper + quickcoupler_x, 'x');
 
   if (tool_id == "gripper"){
     ROS_INFO_STREAM("Gripper Detached Successfully");
