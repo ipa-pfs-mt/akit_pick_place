@@ -408,7 +408,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
   }
 }
 
-bool akit_pick_place::visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame){
+void akit_pick_place::visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame){
 
   ROS_INFO_STREAM("---------- *points visualization* ----------");
   uint32_t shape = visualization_msgs::Marker::ARROW;
@@ -602,11 +602,12 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
       ROS_INFO_STREAM("cartesian motion plan: " << (akitSuccess ? "EXECUTED MOTION PLAN" : "FAILED TO EXECUTE CARTESIAN MOTION PLAN"));
       return (akitSuccess ? true : false);
     } else {
-      ROS_ERROR("Cannot execute cartesian motion, plan < 50 %%");
+      ROS_ERROR("Cannot execute cartesian motion, plan < 40 %%");
       return false;
     }
 }
 
+//executes first pose reached in input position vector
 bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> positions, std::string position){
 
   int count = 0;
@@ -627,6 +628,7 @@ bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> positions,
     }
     //akitGroup->setPoseTarget(positions[i]);
     akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    ROS_INFO_STREAM("Planning time = " << MotionPlan.planning_time_);
     if(!akitSuccess){
       ROS_INFO_STREAM("Motion Planning to " << position << " position ---");
       count++;
@@ -767,7 +769,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
 
   //attaching object to gripper
   bool isattached = gripperGroup->attachObject(object_.id);
-  ros::Duration(2.0).sleep(); //give time for planning scene to process
+  ros::Duration(1.0).sleep(); //give time for planning scene to process
   ROS_INFO_STREAM("Attaching object to gripper: " << (isattached ? "Attached" : "FAILED"));
   if(!isattached){
     ROS_ERROR("Failed to attach object to gripper");
@@ -1116,14 +1118,10 @@ bool akit_pick_place::attachTool(std::string tool_id){
      this->visualizeGrasps(visualize_point, BUCKET_FRAME);
   }
 
-  //move to initial pose
-  akitGroup->setPoseTarget(initial_pose_base_frame.pose);
-  akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  if (akitSuccess){
-    akitGroup->execute(MotionPlan);
-    ROS_INFO_STREAM("Motion plan to initial attaching pose --> success");
-  } else {
-    ROS_ERROR_STREAM("Failed to execute motion to initial attaching pose");
+  std::vector<geometry_msgs::Pose> points;
+  points.push_back(initial_pose_base_frame.pose);
+  if(!this->planAndExecute(points, "pre_place")){
+    ROS_ERROR("Failed to plan and execute");
     return false;
     exit(1);
   }
@@ -1140,6 +1138,10 @@ bool akit_pick_place::attachTool(std::string tool_id){
 
   //promt user
   visual_tools->prompt("proceed ? ");
+
+  //update start state to current state
+  akitState = akitGroup->getCurrentState();
+  akitGroup->setStartState(*akitState);
 
   //rotate quickcoupler +90deg
   akitJointPositions[4] += M_PI/2;
@@ -1183,8 +1185,9 @@ bool akit_pick_place::detachTool(std::string tool_id){
 
   //de-activate lock --> no control in rviz
 
-  //update joint current state
+  //update start state to current state
   akitState = akitGroup->getCurrentState();
+  akitGroup->setStartState(*akitState);
   akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
 
   //rotate quickcoupler -90deg

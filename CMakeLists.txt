@@ -186,6 +186,9 @@ target_link_libraries(tool_attach ${catkin_LIBRARIES})
 add_executable(tool_exchange_test scripts/tool_exchange_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(tool_exchange_test ${catkin_LIBRARIES})
 
+add_executable(test_scenario scripts/test_scenario.cpp src/akit_pick_place.cpp)
+target_link_libraries(test_scenario ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############

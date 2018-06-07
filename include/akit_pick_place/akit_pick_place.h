@@ -132,7 +132,7 @@ public:
   bool generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool sideGrasps = false, bool visualize = true);
   bool generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_,bool sideGrasps = false, bool visualize = true);
   bool generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_,bool sideGrasps = false, bool visualize = true);
-  bool visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame);
+  void visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame);
 
   //choose best grasp -->later
   //rotate gripper body --> test

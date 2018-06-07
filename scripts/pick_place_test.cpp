@@ -48,7 +48,7 @@ int main(int argc, char**argv){
   blockPose.orientation.w = 1.0;
 
   geometry_msgs::Pose placePose = blockPose;
-  placePose.position.x = 3.0;
+  placePose.position.x = -2.5;
 
   Block.primitives.push_back(primitive);
   Block.primitive_poses.push_back(blockPose);
