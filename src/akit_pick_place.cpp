@@ -436,12 +436,12 @@ void akit_pick_place::visualizeGrasps(std::vector<geometry_msgs::Pose> points, s
       marker_pub.publish(marker);
    }
 }
-bool akit_pick_place::rotateGripper(){
+bool akit_pick_place::rotateGripper(double angle ){
 
   gripperState = gripperGroup->getCurrentState();
   gripperGroup->setStartState(*gripperState);
 
-  gripperJointPositions[0] += M_PI / 15; //gripper rotator joint
+  gripperJointPositions[0] += angle; //gripper rotator joint
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
   gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
@@ -462,6 +462,19 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
   object_in_world_frame.pose = object_.primitive_poses[0];
   object_in_world_frame.header.frame_id = object_.header.frame_id;
 
+ /* tf::Quaternion qqq(object_in_world_frame.pose.orientation.x, object_in_world_frame.pose.orientation.y,
+                    object_in_world_frame.pose.orientation.z, object_in_world_frame.pose.orientation.w);
+
+  tf::Matrix3x3 mm(qqq); //rotation matrix from quaternion
+
+  double roll_w, pitch_w, yaw_w;
+  mm.getRPY(roll_w, pitch_w, yaw_w);
+
+  ROS_INFO_STREAM("roll world = " << roll_w);
+  ROS_INFO_STREAM("pitch world = " << pitch_w);
+  ROS_INFO_STREAM("yaw world = " << yaw_w);
+*/
+
   //transform object from world frame to gripper rotator frame
   transform_listener.waitForTransform(GRIPPER_FRAME, WORLD_FRAME, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exceptions
   transform_listener.transformPose(GRIPPER_FRAME,ros::Time(0), object_in_world_frame, WORLD_FRAME, object_in_gripper_frame);
@@ -469,15 +482,22 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
   //get roll, pitch, yaw between object frame and gripper frame
   tf::Quaternion qq(object_in_gripper_frame.pose.orientation.x, object_in_gripper_frame.pose.orientation.y,
                     object_in_gripper_frame.pose.orientation.z, object_in_gripper_frame.pose.orientation.w);
-  tf::Matrix3x3 m(qq);
+
+  tf::Matrix3x3 m(qq); //rotation matrix from quaternion
+
   double roll, pitch, yaw;
-  m.getRPY(roll, pitch, yaw);
+  m.getRPY(roll, pitch, yaw); //get roll,pitch,yaw from rotation matrix
+
+  /*ROS_INFO_STREAM("roll = " << roll);
+  ROS_INFO_STREAM("pitch = " << pitch);
+  ROS_INFO_STREAM("yaw = " << yaw);
+*/
   //account for angles in different quadrants --> rotate x --> y(0) --> z
   if (yaw <= 0.0){
-    gripperJointPositions[0] = (M_PI/2) + yaw;
-  } else {
-    gripperJointPositions[0] =  yaw - (M_PI/2);
-  }
+      gripperJointPositions[0] = (M_PI/2) + yaw;
+    } else {
+      gripperJointPositions[0] =  yaw - (M_PI/2);
+    }
 
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
@@ -515,26 +535,8 @@ bool akit_pick_place::closeGripper(){
   gripperJointPositions[1] = 0.5; //relate to object length
   gripperJointPositions[2] = 0.5;
   gripperGroup->setJointValueTarget(gripperJointPositions);
-  int count = 0.0;
 
   gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-
-  while (!gripperSuccess){
-
-      ROS_INFO_STREAM("Failed to close Gripper --> rotating Gripper");
-
-      this->openGripper();
-      this->rotateGripper();
-
-      gripperJointPositions[1] = 0.7;
-      gripperJointPositions[2] = 0.7;
-      gripperGroup->setJointValueTarget(gripperJointPositions);
-      gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      count++;
-      if (count == 15)
-        break;
-     } //execute after planning success
-
   if (gripperSuccess){
     gripperGroup->execute(gripperMotionPlan);
     ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Closed gripper" : "FAILED TO CLOSE GRIPPER"));
@@ -749,13 +751,25 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
      exit(1);
     }
   }
-
   //cartesian motion downwards
-  if (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
+  /*if (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
     ROS_ERROR("Failed to execute downwards cartesian motion");
     return false;
     exit(1);
-  }
+  }*/
+
+  int count = 0.0;
+  while (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
+        this->rotateGripper(M_PI/6);
+        count++;
+            if (count == 6.0) {
+              ROS_ERROR("Failed to execute downwards cartesian motion");
+              return false;
+              exit(1);
+        }
+    }
+
+
 
   //add allowed collision matrix
   this->allowObjectCollision(object_.id);

@@ -16,10 +16,10 @@ int main(int argc, char **argv){
   barrelPose.position.x = 3.0;
   barrelPose.position.y = -2.0;
   barrelPose.position.z = 0.25;
-  barrelPose.orientation.w = 0.653;
-  barrelPose.orientation.x = 0.653;
-  barrelPose.orientation.y = 0.271;
-  barrelPose.orientation.z = 0.271;
+  barrelPose.orientation.w = 0.766;
+  barrelPose.orientation.x = 0.0;
+  barrelPose.orientation.y = 0.643;
+  barrelPose.orientation.z = 0.0;
 
   //barrel place position
   geometry_msgs::Pose barrelPlace = barrelPose;
