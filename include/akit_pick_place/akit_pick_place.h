@@ -137,7 +137,7 @@ public:
   //choose best grasp -->later
   //rotate gripper body --> test
 
-  bool rotateGripper();
+  bool rotateGripper(double angle);
   bool rotateGripper(moveit_msgs::CollisionObject object_);
   bool openGripper();
   bool closeGripper();
