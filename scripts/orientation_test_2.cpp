@@ -29,7 +29,7 @@ int main(int argc, char **argv){
 
 
   for (int i = 0; i < 11; ++i){
-    tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,2*M_PI),fRand(0.0,2*M_PI),fRand(0,2*M_PI)); //fix no rotation around pitch
+    tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,2*M_PI),fRand(0.0,2*M_PI),fRand(0,2*M_PI)); //check more rotation around y-axis
 
     geometry_msgs::Pose pose;
     pose.position.x = fRand(-2.0,2.0);
@@ -43,7 +43,7 @@ int main(int argc, char **argv){
     geometry_msgs::Pose place = pose;
     place.position.x = 2.0;
 
-    moveit_msgs::CollisionObject cuboid = akit.addCollisionBlock(pose, "cuboid", CUBOID_X,CUBOID_Y,CUBOID_Z);
+    /*moveit_msgs::CollisionObject cuboid = akit.addCollisionBlock(pose, "cuboid", CUBOID_X,CUBOID_Y,CUBOID_Z);
     akit.generateGrasps(pose,CUBOID_X,CUBOID_Y,CUBOID_Z);
     if(!akit.pick(cuboid)){
       ROS_ERROR("Failed to pick");
@@ -53,9 +53,9 @@ int main(int argc, char **argv){
     if(!akit.place(cuboid)){
       ROS_ERROR("Failed to place");
       continue;
-    }
+    }*/
 
-   /* moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose, "cylinder",CYLINDER_HEIGHT,CYLINDER_RADIUS);
+   moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose, "cylinder",CYLINDER_HEIGHT,CYLINDER_RADIUS);
     akit.generateGrasps(pose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
     if(!akit.pick(cylinder)){
       ROS_ERROR("Failed to pick");
@@ -65,6 +65,6 @@ int main(int argc, char **argv){
     if(!akit.place(cylinder)){
       ROS_ERROR("Failed to place");
       continue;
-    }*/
+    }
   }
 }
