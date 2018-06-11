@@ -251,7 +251,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
     double step_size = covered_distance / number_of_steps;
 
     //testing if the orientation of the object is greater or lower than 45deg
-    double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_) * sin(M_PI/2 - yaw_);
+    double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
 
     //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //rotation to be only around z-axis
@@ -760,16 +760,14 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
 
   int count = 0.0;
   while (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
-        this->rotateGripper(M_PI/6);
-        count++;
-            if (count == 6.0) {
-              ROS_ERROR("Failed to execute downwards cartesian motion");
-              return false;
-              exit(1);
-        }
+    this->rotateGripper(M_PI/6);
+    count++;
+    if (count == 6.0) {
+      ROS_ERROR("Failed to execute downwards cartesian motion");
+      return false;
+      exit(1);
     }
-
-
+  }
 
   //add allowed collision matrix
   this->allowObjectCollision(object_.id);
