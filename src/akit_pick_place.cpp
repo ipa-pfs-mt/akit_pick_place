@@ -1,4 +1,6 @@
 #include <akit_pick_place/akit_pick_place.h>
+#include <iostream>
+#include <fstream>
 
 geometry_msgs::Pose akit_pick_place::interactive_pose;
 std::string akit_pick_place::interactive_name;
@@ -257,7 +259,6 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //rotation to be only around z-axis
     for (double i = step_size; i <= covered_distance; i += step_size){
 
-
       /*if the object's orientation in roll or pitch is between -45deg and 45deg
        *then the added distance is the cuboidDiagonal/2
        *if the orientation is outside this range then added distance is the cuboidHypotenuse/2 */
@@ -347,7 +348,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     double starting_point = line_length - cylinder_radius_ - GRIPPER_SIDE_LENGTH;
     double step_size = covered_distance / number_of_steps;
 
-    //testing if the orientation of the object (in x,y) is greater or lower than 45deg //check with yaw
+    //testing if the orientation of the object (in x,y) is greater or lower than 45deg
     double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
 
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
@@ -597,14 +598,14 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
   double fraction  = akitGroup->computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
   ROS_INFO_STREAM("Visualizing Cartesian Motion plan:  " << (fraction * 100.0) <<"%% achieved");
 
-  if (fraction * 100 >= 40.0){
+  if (fraction * 100 >= 45.0){
       MotionPlan.trajectory_ = trajectory;
       ROS_INFO_STREAM("====== 3. Executing Cartesian Motion ======");
       akitSuccess = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
       ROS_INFO_STREAM("cartesian motion plan: " << (akitSuccess ? "EXECUTED MOTION PLAN" : "FAILED TO EXECUTE CARTESIAN MOTION PLAN"));
       return (akitSuccess ? true : false);
     } else {
-      ROS_ERROR("Cannot execute cartesian motion, plan < 40 %%");
+      ROS_ERROR("Cannot execute cartesian motion, plan < 50 %%");
       return false;
     }
 }
@@ -631,6 +632,12 @@ bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> positions,
     //akitGroup->setPoseTarget(positions[i]);
     akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
     ROS_INFO_STREAM("Planning time = " << MotionPlan.planning_time_);
+
+    std::ofstream fout;
+    fout.open("planning_time.txt", std::ofstream::out | std::ofstream::app);
+    fout << "planning_time for " << position  << " postion = "<< MotionPlan.planning_time_ << std::endl;
+    fout.close();
+
     if(!akitSuccess){
       ROS_INFO_STREAM("Motion Planning to " << position << " position ---");
       count++;
