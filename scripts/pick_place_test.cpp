@@ -39,8 +39,8 @@ int main(int argc, char**argv){
 
   //create object pose
   geometry_msgs::Pose blockPose;
-  blockPose.position.x = 2.5;
-  blockPose.position.y = 2.0;
+  blockPose.position.x = 2.3;
+  blockPose.position.y = 1.836;
   blockPose.position.z = 0.17;
   blockPose.orientation.x = 0.0;
   blockPose.orientation.y = 0.0;

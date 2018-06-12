@@ -189,6 +189,12 @@ target_link_libraries(tool_exchange_test ${catkin_LIBRARIES})
 add_executable(test_scenario scripts/test_scenario.cpp src/akit_pick_place.cpp)
 target_link_libraries(test_scenario ${catkin_LIBRARIES})
 
+add_executable(simple_experiment_1 scripts/simple_experiment_1.cpp src/akit_pick_place.cpp)
+target_link_libraries(simple_experiment_1 ${catkin_LIBRARIES})
+
+add_executable(collision_experiment_1 scripts/collision_experiment_1.cpp src/akit_pick_place.cpp)
+target_link_libraries(collision_experiment_1 ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############

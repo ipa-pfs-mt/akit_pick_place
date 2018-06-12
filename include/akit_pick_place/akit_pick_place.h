@@ -13,6 +13,8 @@
 #include <moveit_msgs/ApplyPlanningScene.h>
 #include <tf/transform_datatypes.h>
 #include <tf/tf.h>
+#include <iostream>
+#include <fstream>
 
 
 #define UP true
@@ -23,7 +25,7 @@ typedef std::map<std::string, moveit_msgs::AttachedCollisionObject> AttachedColl
 
 class akit_pick_place {
 
-private:
+private: //add comments inside the header file not the source file
 
   //ros
   ros::NodeHandle nh;
@@ -129,6 +131,7 @@ public:
   double getGripperSideLength();
   double getGripperJawLength();
 
+  void writeOutput(std::string file_name, std::string position);
   bool generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool sideGrasps = false, bool visualize = true);
   bool generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_,bool sideGrasps = false, bool visualize = true);
   bool generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_,bool sideGrasps = false, bool visualize = true);
@@ -137,7 +140,7 @@ public:
   //choose best grasp -->later
   //rotate gripper body --> test
 
-  bool rotateGripper(double angle);
+  bool rotateGripper(double angle_rad);
   bool rotateGripper(moveit_msgs::CollisionObject object_);
   bool openGripper();
   bool closeGripper();
