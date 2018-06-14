@@ -67,6 +67,7 @@ akit_pick_place::akit_pick_place(){
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));
   planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
+  akitGroup->setPlanningTime(200.0);
 }
 akit_pick_place::~akit_pick_place(){
 }
@@ -106,6 +107,9 @@ void akit_pick_place::setGripperSideLength(double gripper_side_length_){
 void akit_pick_place::setGripperJawLength(double gripper_jaw_length_){
   GRIPPER_JAW_LENGTH = gripper_jaw_length_;
 }
+void akit_pick_place::setPlannerID(std::string planner_id_){
+  akitGroup->setPlannerId(planner_id_);
+}
 std::string akit_pick_place::getPlanningGroup(){
   return PLANNING_GROUP_NAME;
 }
@@ -117,8 +121,7 @@ std::string akit_pick_place::getBaseLink(){
 }
 std::string akit_pick_place::getWorldFrame(){
   return WORLD_FRAME;
-}
-std::string akit_pick_place::getGripperFrame(){
+}std::string akit_pick_place::getGripperFrame(){
   return GRIPPER_FRAME;
 }
 double akit_pick_place::getGripperLength(){
@@ -130,16 +133,57 @@ double akit_pick_place::getGripperSideLength(){
 double akit_pick_place::getGripperJawLength(){
   return GRIPPER_JAW_LENGTH;
 }
+void akit_pick_place::addOrientationConstraints(){ //remove after testing
+  moveit_msgs::OrientationConstraint ocm;
+  ocm.link_name = "quickcoupler";
+  ocm.header.frame_id = "chassis";
+  ocm.orientation.w = 1.0;
+  ocm.orientation.x = 0.0;
+  ocm.orientation.y = 0.0;
+  ocm.orientation.z = 0.0;
+  ocm.absolute_x_axis_tolerance = 1.0;
+  ocm.absolute_y_axis_tolerance = 1.0;
+  ocm.absolute_z_axis_tolerance = 1.7;
+  ocm.weight = 1.0;
+  //Now, set it as the path constraint for the group.
+  moveit_msgs::Constraints test_constraints;
+  test_constraints.orientation_constraints.push_back(ocm);
+  akitGroup->setPathConstraints(test_constraints);
+}
 
-void akit_pick_place::writeOutput(std::string file_name, std::string position){
+void akit_pick_place::writeOutputPlanningTime(std::string file_name){
   ROS_INFO_STREAM("Planning time = " << MotionPlan.planning_time_);
 
   std::ofstream fout;
   fout.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
-  //fout << "planning_time for " <<  position  << " postion = "<< MotionPlan.planning_time_ << std::endl;
   fout << MotionPlan.planning_time_ << std::endl;
   fout.close();
+}
 
+void akit_pick_place::writeOutputTrajectoryLength(std::string file_name){ //from ipa-manip
+
+  std::ofstream fout;
+  fout.open(file_name.c_str(), std::ofstream::out | std::ofstream::app);
+
+  robot_trajectory::RobotTrajectory traj_obj(akitGroup->getRobotModel(), akitGroup->getName());
+  moveit::core::RobotState ref_state_obj(akitGroup->getRobotModel());
+  traj_obj.setRobotTrajectoryMsg(ref_state_obj, MotionPlan.trajectory_);
+
+  const std::string tool_link = akitGroup->getLinkNames().back();
+  auto euclidean_distance = [&tool_link](const robot_state::RobotState& state1,const robot_state::RobotState& state2){
+  auto tool_pose1 = state1.getGlobalLinkTransform(tool_link);
+  auto tool_pose2 = state2.getGlobalLinkTransform(tool_link);
+  return (tool_pose1.translation() - tool_pose2.translation()).norm();
+  };
+
+  double traj_length_cartesian_space = 0.0000;
+  for (size_t p = 1; p < traj_obj.getWayPointCount(); ++p)
+  {
+    traj_length_cartesian_space += euclidean_distance(traj_obj.getWayPoint(p), traj_obj.getWayPoint(p-1));
+  }
+  fout << traj_length_cartesian_space << std::endl;
+  ROS_INFO_STREAM("trajectory_length = " << traj_length_cartesian_space);
+  fout.close();
 }
 
 void akit_pick_place::displayTrajectory(moveit::planning_interface::MoveGroupInterface::Plan motion_plan_trajectory,
@@ -737,6 +781,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     //loop through all grasp poses
     if(!this->planAndExecute(grasp_pose_vector, "pre_grasp")){
       ROS_ERROR("Failed to plan and execute");
+      grasp_pose_vector.clear();
       return false;
       exit(1);
     }
@@ -753,7 +798,9 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     }
   }
 
-  this->writeOutput("planning_time_simple_experiment_STOMP_pick.txt", " ");
+  this->writeOutputPlanningTime("planning_time_collision_experiment_2_RRTConnect_pick.txt");
+
+  this->writeOutputTrajectoryLength("trajectory_length_collision_experiment_2_RRTConnect_pick.txt");
 
   //clear grasp_pose_vector
   grasp_pose_vector.clear();
@@ -836,6 +883,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
     //loop through all grasp poses
     if(!this->planAndExecute(grasp_pose_vector, "pre_place")){
       ROS_ERROR("Failed to plan and execute");
+      grasp_pose_vector.clear();
       return false;
       exit(1);
     }
@@ -852,7 +900,9 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
     }
   }
 
-  this->writeOutput("planning_simple_experiment_STOMP_time_place.txt", " ");
+  this->writeOutputPlanningTime("planning_time_collision_experiment_2_RRTConnect_place.txt");
+
+  this->writeOutputTrajectoryLength("trajectory_length_collision_experiment_2_RRTConnect_place.txt");
 
   //clear grasp pose vector
   grasp_pose_vector.clear();
@@ -935,7 +985,6 @@ moveit_msgs::CollisionObject akit_pick_place::addCollisionCylinder(geometry_msgs
   collision_objects_vector.push_back(cylinder);
   planningSceneInterface.addCollisionObjects(collision_objects_vector);
   return cylinder;
-
 }
 
 moveit_msgs::CollisionObject akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size_x, double block_size_y, double block_size_z ){

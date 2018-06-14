@@ -9,10 +9,11 @@ int main(int argc, char **argv){
   ros::AsyncSpinner spinner(1);
   spinner.start();
   akit_pick_place akit;
+  //akit.setPlannerID("LBKPIECEkConfigDefault");
 
-  double y = 0.162;
+  double y = -2.7;
   //create 100 objects in simple orientations and record planning time
-  for (int i = 0; i < 47; ++i){
+  for (int i = 0; i < 100; ++i){
 
     geometry_msgs::Pose cylinderPose;
     cylinderPose.position.x = 2.3;

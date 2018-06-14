@@ -121,6 +121,8 @@ public:
   void setGripperSideLength(double gripper_side_length_);
   void setGripperJawLength(double gripper_jaw_length_);
   void setFromGraspGenerator(bool grasp_generator);
+  void setPlannerID(std::string planner_id_);
+  void addOrientationConstraints();
 
   std::string getPlanningGroup();
   std::string getGripperGroup();
@@ -131,7 +133,8 @@ public:
   double getGripperSideLength();
   double getGripperJawLength();
 
-  void writeOutput(std::string file_name, std::string position);
+  void writeOutputPlanningTime(std::string file_name);
+  void writeOutputTrajectoryLength(std::string file_name);
   bool generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool sideGrasps = false, bool visualize = true);
   bool generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_,bool sideGrasps = false, bool visualize = true);
   bool generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_,bool sideGrasps = false, bool visualize = true);
