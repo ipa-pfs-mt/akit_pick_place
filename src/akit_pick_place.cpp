@@ -121,7 +121,8 @@ std::string akit_pick_place::getBaseLink(){
 }
 std::string akit_pick_place::getWorldFrame(){
   return WORLD_FRAME;
-}std::string akit_pick_place::getGripperFrame(){
+}
+std::string akit_pick_place::getGripperFrame(){
   return GRIPPER_FRAME;
 }
 double akit_pick_place::getGripperLength(){
@@ -277,11 +278,14 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_, bool sideGrasps, bool visualize){
 
-  //calculate roll,pitch,yaw of the object relative to the world frame
+  //calculate roll,pitch,yaw of the object relative to the world frame for test variable (top grasping)
   tf::Quaternion qq(cuboid_pose_.orientation.x, cuboid_pose_.orientation.y,cuboid_pose_.orientation.z, cuboid_pose_.orientation.w);
   tf::Matrix3x3 m(qq);
   double roll_, pitch_, yaw_;
   m.getRPY(roll_, pitch_, yaw_);
+
+  //testing if the orientation of the object is greater or lower than 45deg
+  double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
 
   //transformation to base_link (chassis frame)
   geometry_msgs::PoseStamped cuboid_in_chassis_frame,cuboid_in_world_frame;
@@ -296,6 +300,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
   //create yaw angle (rotation around z-axis) of Grasp points
   double yaw = atan2(cuboid_in_chassis_frame.pose.position.y,cuboid_in_chassis_frame.pose.position.x);
   double cuboidDiagonal = sqrt(pow(cuboid_x_,2)+pow(cuboid_z_,2));
+  double cuboidHypotenuse = sqrt(pow(cuboid_x_,2)+pow(cuboid_y_,2));
 
   if(!sideGrasps){
 
@@ -304,13 +309,9 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
     double number_of_steps = 10.0;
 
     //grasp distance covered = length of cuboid hypotenuse + 2*gripper_side_length
-    double cuboidHypotenuse = sqrt(pow(cuboid_x_,2)+pow(cuboid_y_,2));
     double covered_distance = cuboidHypotenuse + (2 * GRIPPER_SIDE_LENGTH);
     double starting_point = line_length - (cuboidHypotenuse/2) - GRIPPER_SIDE_LENGTH;
     double step_size = covered_distance / number_of_steps;
-
-    //testing if the orientation of the object is greater or lower than 45deg
-    double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
 
     //grasp_pose_vector = std::vector<geometry_msgs::Pose>(number_of_steps); //initialize
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //rotation to be only around z-axis
@@ -350,9 +351,13 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
     double roll = 0.0; //fix rotation around x-axis to zero
 
     //make a circle in xz plane tilted around z-axis, 0.05 to avoid collision
-    double radius = GRIPPER_LENGTH + (cuboidDiagonal/2) + 0.05;
-
-    //start grasp generation
+    double radius = 0.0;
+    if(test >= sin(M_PI/4)){
+      radius = GRIPPER_LENGTH + (cuboidDiagonal/2) + 0.05;
+    } else if (test <= sin(M_PI/4)){
+      radius = GRIPPER_LENGTH + (cuboidHypotenuse/2) + 0.05;
+    }
+     //start grasp generation
     for (double pitch = pitch_min; pitch <= pitch_max; pitch += angle_incr, pos_pitch += angle_incr){
 
       tf::Quaternion q = tf::createQuaternionFromRPY(roll,pitch,yaw);
@@ -363,7 +368,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
       //semi-circle in xz-plane with a tilt around z-axis (rotation matrix)
       grasp_pose.position.x = cuboid_in_chassis_frame.pose.position.x - radius * cos(pos_pitch) * cos(yaw);
       grasp_pose.position.y = cuboid_in_chassis_frame.pose.position.y -  radius * cos(pos_pitch) * sin(yaw);
-      grasp_pose.position.z = cuboid_in_chassis_frame.pose.position.z  + radius * sin(pos_pitch);
+      grasp_pose.position.z = cuboid_in_chassis_frame.pose.position.z + radius * sin(pos_pitch);
       grasp_pose_vector.push_back(grasp_pose);
     }
     if(visualize){
@@ -371,16 +376,18 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
     }
     return true;
   }
-
 }
 
 bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_,bool sideGrasps, bool visualize){
 
-  //calculate roll,pitch,yaw of the object relative to the world frame
+  //calculate roll,pitch,yaw of the object relative to the world frame for test variable (top grasping)
   tf::Quaternion qq(cylinder_pose_.orientation.x, cylinder_pose_.orientation.y,cylinder_pose_.orientation.z, cylinder_pose_.orientation.w);
   tf::Matrix3x3 m(qq);
   double roll_, pitch_, yaw_;
   m.getRPY(roll_, pitch_, yaw_);
+
+  //testing if the orientation of the object (in x,y) is greater or lower than 45deg
+  double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
 
   //transformation to base_link (chassis frame)
   geometry_msgs::PoseStamped cylinder_in_chassis_frame,cylinder_in_world_frame;
@@ -407,9 +414,6 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     double covered_distance = cylinderDiameter + (2 * GRIPPER_SIDE_LENGTH);
     double starting_point = line_length - cylinder_radius_ - GRIPPER_SIDE_LENGTH;
     double step_size = covered_distance / number_of_steps;
-
-    //testing if the orientation of the object (in x,y) is greater or lower than 45deg
-    double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
 
     tf::Quaternion q = tf::createQuaternionFromRPY(0.0,0.0,yaw); //fix rotation to be only around z-axis
     for (double i = step_size; i <= covered_distance; i += step_size){
@@ -448,10 +452,14 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
     double pos_pitch = M_PI / 9;    //20 deg
     double roll = 0.0; //fix rotation around x-axis to zero
 
-    //make a circle in xz plane tilted around z-axis, 0.05 to avoid collision
-    double radius = GRIPPER_LENGTH + (cylinderInternalDiagonal/2) + 0.05;
-
-     //start grasp generation
+    //make a circle in xz plane tilted around z-axis, tolerance 0.05 to avoid collision
+    double radius = 0.0;
+    if(test >= sin(M_PI/4)){
+      radius = GRIPPER_LENGTH + (cylinderInternalDiagonal/2) + 0.05;
+    } else if (test <= sin(M_PI/4)){
+      radius = GRIPPER_LENGTH + cylinder_radius_ + 0.05;
+    }
+    //start grasp generation
     for (double pitch = pitch_min; pitch <= pitch_max; pitch += angle_incr, pos_pitch += angle_incr){
 
       tf::Quaternion q = tf::createQuaternionFromRPY(roll,pitch,yaw);
@@ -462,7 +470,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
       //semi-circle in xz-plane with a tilt around z-axis (rotation matrix)
       grasp_pose.position.x = cylinder_in_chassis_frame.pose.position.x - radius * cos(pos_pitch) * cos(yaw);
       grasp_pose.position.y = cylinder_in_chassis_frame.pose.position.y -  radius * cos(pos_pitch) * sin(yaw);
-      grasp_pose.position.z = cylinder_in_chassis_frame.pose.position.z  + radius * sin(pos_pitch);
+      grasp_pose.position.z = cylinder_in_chassis_frame.pose.position.z + radius * sin(pos_pitch);
       grasp_pose_vector.push_back(grasp_pose);
     }
     if(visualize){
@@ -584,9 +592,24 @@ bool akit_pick_place::openGripper(){
   return (gripperSuccess ? true : false);
 }
 
-bool akit_pick_place::closeGripper(){
+bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
 
-  double gripper_close_angle = M_PI/6; //30 deg
+  //relate close gripper to the side lengths of the object --> gripper close angle is related to the minimum side
+  double max_open_length = 0.7; //measured in Rviz
+  double min_side = object_.primitives[0].dimensions[0];
+
+  //compute minimum side
+  for(int i = 0.0; i < object_.primitives[0].dimensions.size(); ++i){
+    if (object_.primitives[0].dimensions[i] < min_side){
+      min_side = object_.primitives[0].dimensions[i];
+    }
+  }
+   //to get diameter not radius --> not needed for cubes and cuboids
+  if(object_.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
+    min_side *= 2;
+  }
+
+  double gripper_close_angle = (min_side * (M_PI/3)) / max_open_length;
 
   //update start state to current state
   gripperState = gripperGroup->getCurrentState();
@@ -798,9 +821,9 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     }
   }
 
-  this->writeOutputPlanningTime("planning_time_collision_experiment_2_RRTConnect_pick.txt");
+ /*this->writeOutputPlanningTime("planning_time_collision_experiment_2_STOMP_std0.3_pick.txt");
 
-  this->writeOutputTrajectoryLength("trajectory_length_collision_experiment_2_RRTConnect_pick.txt");
+  this->writeOutputTrajectoryLength("trajectory_length_collision_experiment_2_STOMP_std0.3_pick.txt");*/
 
   //clear grasp_pose_vector
   grasp_pose_vector.clear();
@@ -841,7 +864,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   this->allowObjectCollision(object_.id);
 
   //closing gripper
-  if (!this->closeGripper()){
+  if (!this->closeGripper(object_)){
     ROS_ERROR("Failed to close Gripper");
     return false;
     exit(1);
@@ -900,9 +923,9 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
     }
   }
 
-  this->writeOutputPlanningTime("planning_time_collision_experiment_2_RRTConnect_place.txt");
+  /*this->writeOutputPlanningTime("planning_time_collision_experiment_2_STOMP_std0.3_place.txt");
 
-  this->writeOutputTrajectoryLength("trajectory_length_collision_experiment_2_RRTConnect_place.txt");
+  this->writeOutputTrajectoryLength("trajectory_length_collision_experiment_2_STOMP_std0.3_place.txt");*/
 
   //clear grasp pose vector
   grasp_pose_vector.clear();
@@ -1088,8 +1111,7 @@ void akit_pick_place::addInteractiveMarkers(){ //server
 bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> place_positions){
 
   /*
-   * takes input a vector of user desired place locations and waits for user to choose
-   * which object to pick
+   * takes input a vector of user desired place locations and waits for user to choose an object to pick
    * pick is interactive --> place is predefined
    */
 
@@ -1156,7 +1178,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
   return true;
 }
 
-bool akit_pick_place::attachTool(std::string tool_id){
+bool akit_pick_place::attachTool(std::string tool_id){ //change to tool frame id and remove if conditions!
 
   std::transform(tool_id.begin(), tool_id.end(), tool_id.begin(), ::tolower);
   if (tool_id != "gripper" && tool_id != "bucket"){

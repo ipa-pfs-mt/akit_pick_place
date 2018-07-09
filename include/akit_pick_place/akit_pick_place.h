@@ -146,7 +146,7 @@ public:
   bool rotateGripper(double angle_rad);
   bool rotateGripper(moveit_msgs::CollisionObject object_);
   bool openGripper();
-  bool closeGripper();
+  bool closeGripper(moveit_msgs::CollisionObject object_);
   bool executeAxisCartesianMotion(bool direction, double cartesian_distance, char axis);
   bool planAndExecute(std::vector<geometry_msgs::Pose> positions, std::string position);
   void allowObjectCollision(std::string object_id);
