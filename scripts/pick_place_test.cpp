@@ -4,7 +4,7 @@ const std::string BLOCK_NAME = "block";
 const std::string CYLINDER_NAME = "cylinder";
 const double BLOCK_SIZE = 0.35;
 const double CYLINDER_HEIGHT = 0.35;
-const double CYLINDER_RADIUS = 0.21;
+const double CYLINDER_RADIUS = 0.15;
 
 int main(int argc, char**argv){
 
@@ -42,10 +42,10 @@ int main(int argc, char**argv){
   blockPose.position.x = 2.0;
   blockPose.position.y = 2.5;
   blockPose.position.z = 0.17;
-  blockPose.orientation.w = 1.0;
-  blockPose.orientation.x = 0.0;
-  blockPose.orientation.y = 0.0;
-  blockPose.orientation.z = 0.0;
+  blockPose.orientation.w = 0.694;
+  blockPose.orientation.x = 0.583;
+  blockPose.orientation.y = 0.272;
+  blockPose.orientation.z = 0.324;
 
   geometry_msgs::Pose placePose = blockPose;
   placePose.position.x = -2.5;

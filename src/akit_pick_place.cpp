@@ -321,9 +321,9 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
        *then the added distance is the cuboidDiagonal/2
        *if the orientation is outside this range then added distance is the cuboidHypotenuse/2 */
 
-      if(test >= sin(M_PI/4)){
+      if(std::abs(test) >= sin(M_PI/4)){
         grasp_pose.position.z = GRIPPER_LENGTH + cuboid_in_chassis_frame.pose.position.z + (cuboidDiagonal/2);
-      } else if (test <= sin(M_PI/4)){
+      } else if (std::abs(test) <= sin(M_PI/4)){
         grasp_pose.position.z = GRIPPER_LENGTH + cuboid_in_chassis_frame.pose.position.z + (cuboidHypotenuse/2);
       }
       grasp_pose.position.x = (starting_point + i) * cos(yaw);
@@ -352,9 +352,9 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
 
     //make a circle in xz plane tilted around z-axis, 0.05 to avoid collision
     double radius = 0.0;
-    if(test >= sin(M_PI/4)){
+    if(std::abs(test) >= sin(M_PI/4)){
       radius = GRIPPER_LENGTH + (cuboidDiagonal/2) + 0.05;
-    } else if (test <= sin(M_PI/4)){
+    } else if (std::abs(test) <= sin(M_PI/4)){
       radius = GRIPPER_LENGTH + (cuboidHypotenuse/2) + 0.05;
     }
      //start grasp generation
@@ -386,6 +386,7 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
   double roll_, pitch_, yaw_;
   m.getRPY(roll_, pitch_, yaw_);
 
+  ROS_INFO_STREAM("roll = " << roll_ << " pitch = " << pitch_ << "yaw = " << yaw_);
   //testing if the orientation of the object (in x,y) is greater or lower than 45deg
   double test = sin(M_PI/2 - roll_) * sin(M_PI/2 - pitch_);
 
@@ -422,9 +423,9 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
        *then the added distance is the cylinderInternalDiagonal/2
        *if the orientation is outside this range then added distance is the cylinder radius*/
 
-      if(test >= sin(M_PI/4)){
+      if(std::abs(test) >= sin(M_PI/4)){
         grasp_pose.position.z = GRIPPER_LENGTH + cylinder_in_chassis_frame.pose.position.z + (cylinderInternalDiagonal/2);
-      } else if (test <= sin(M_PI/4)){
+      } else if (std::abs(test) <= sin(M_PI/4)){
         grasp_pose.position.z = GRIPPER_LENGTH + cylinder_in_chassis_frame.pose.position.z + (cylinder_radius_);
       }
       grasp_pose.position.x = (starting_point + i) * cos(yaw);
@@ -454,9 +455,9 @@ bool akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
 
     //make a circle in xz plane tilted around z-axis, tolerance 0.05 to avoid collision
     double radius = 0.0;
-    if(test >= sin(M_PI/4)){
+    if(std::abs(test) >= sin(M_PI/4)){
       radius = GRIPPER_LENGTH + (cylinderInternalDiagonal/2) + 0.05;
-    } else if (test <= sin(M_PI/4)){
+    } else if (std::abs(test) <= sin(M_PI/4)){
       radius = GRIPPER_LENGTH + cylinder_radius_ + 0.05;
     }
     //start grasp generation
@@ -596,6 +597,7 @@ bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
 
   //relate close gripper to the side lengths of the object --> gripper close angle is related to the minimum side
   double max_open_length = 0.7; //measured in Rviz
+  double tolerance = 0.01; //for better caging
   double min_side = object_.primitives[0].dimensions[0];
 
   //compute minimum side
@@ -609,7 +611,7 @@ bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
     min_side *= 2;
   }
 
-  double gripper_close_angle = (min_side * (M_PI/3)) / max_open_length;
+  double gripper_close_angle = ((min_side * (M_PI/3)) / max_open_length) - tolerance;
 
   //update start state to current state
   gripperState = gripperGroup->getCurrentState();
@@ -696,6 +698,10 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 //executes first pose reached in input position vector
 bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> positions, std::string position){
 
+  //update start state to current state
+  akitState = akitGroup->getCurrentState();
+  akitGroup->setStartState(*akitState);
+
   int count = 0;
   bool executed, found_ik;
 
@@ -726,7 +732,7 @@ bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> positions,
         return false;
         exit(1);
     } else {
-      this->displayTrajectory(MotionPlan,positions[i], position + std::to_string(count), rviz_visual_tools::colors::LIME_GREEN);
+      this->displayTrajectory(MotionPlan,positions[i], position + std::to_string(count), rviz_visual_tools::colors::ORANGE);
       executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
       ROS_INFO_STREAM("Executing Motion plan to: " << position << " position: "<< (executed ? "Executed" : "FAILED"));
       if (!executed){
@@ -821,9 +827,9 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     }
   }
 
- /*this->writeOutputPlanningTime("planning_time_collision_experiment_2_STOMP_std0.3_pick.txt");
+  this->writeOutputPlanningTime("planning_time_LazyPRM*_simple_experiment_pick.txt");
 
-  this->writeOutputTrajectoryLength("trajectory_length_collision_experiment_2_STOMP_std0.3_pick.txt");*/
+  this->writeOutputTrajectoryLength("trajectory_length_LazyPRM*_simple_experiment_pick.txt");
 
   //clear grasp_pose_vector
   grasp_pose_vector.clear();
@@ -923,9 +929,9 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
     }
   }
 
-  /*this->writeOutputPlanningTime("planning_time_collision_experiment_2_STOMP_std0.3_place.txt");
+  this->writeOutputPlanningTime("planning_time_LazyPRM*_simple_experiment_place.txt");
 
-  this->writeOutputTrajectoryLength("trajectory_length_collision_experiment_2_STOMP_std0.3_place.txt");*/
+  this->writeOutputTrajectoryLength("trajectory_length_LazyPRM*_simple_experiment_place.txt");
 
   //clear grasp pose vector
   grasp_pose_vector.clear();
@@ -1146,7 +1152,6 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
               return false;
               exit(1);
             }
-
             break;
           }
         } else {
@@ -1230,7 +1235,7 @@ bool akit_pick_place::attachTool(std::string tool_id){ //change to tool frame id
 
   std::vector<geometry_msgs::Pose> points;
   points.push_back(initial_pose_base_frame.pose);
-  if(!this->planAndExecute(points, "pre_place")){
+  if(!this->planAndExecute(points, "initial pose")){
     ROS_ERROR("Failed to plan and execute");
     return false;
     exit(1);
@@ -1242,7 +1247,7 @@ bool akit_pick_place::attachTool(std::string tool_id){ //change to tool frame id
   //execute cartesian motion in -x axis direction
   this->executeAxisCartesianMotion(DOWN, distance_above_gripper + quickcoupler_x, 'x');
 
-  //update joint current state
+  //get current joint state
   akitState = akitGroup->getCurrentState();
   akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
 

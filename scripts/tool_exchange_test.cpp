@@ -8,6 +8,10 @@ int main(int argc, char **argv){
 
   akit_pick_place akit;
   akit.attachTool("gripper");
-
-  //akit.detachTool("gripper");
+  sleep(2.0);
+  akit.detachTool("gripper");
+  sleep(2.0);
+  akit.attachTool("bucket");
+  sleep(2.0);
+  akit.detachTool("bucket");
 }

@@ -1,6 +1,5 @@
 <launch>
-
-<node name="interactive_pick_test" pkg="akit_pick_place" type="interactive_pick_test"/>
 <node name="interactive_markers_test" pkg="akit_pick_place" type="interactive_markers_test" />
+<node name="interactive_pick_test" pkg="akit_pick_place" type="interactive_pick_test"/>
 
 </launch>

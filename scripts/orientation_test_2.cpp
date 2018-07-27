@@ -28,8 +28,9 @@ int main(int argc, char **argv){
   random_.quaternion(quat);
 
 
-  for (int i = 0; i < 11; ++i){
-    tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,2*M_PI),fRand(0.0,2*M_PI),fRand(0,2*M_PI)); //check more rotation around y-axis
+  for (int i = 0; i < 100; ++i){
+    //tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,2*M_PI),fRand(0.0,2*M_PI),fRand(0,2*M_PI)); //check more rotation around y-axis
+    tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,M_PI), 0.0 ,fRand(0,M_PI)); //check more rotation around y-axis
 
     geometry_msgs::Pose pose;
     pose.position.x = fRand(-2.0,2.0);
