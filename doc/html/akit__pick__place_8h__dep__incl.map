@@ -1,0 +1,15 @@
+<map id="akit_pick_place.h" name="akit_pick_place.h">
+<area shape="rect" id="node2" href="$collision__experiment__1_8cpp.html" title="collision_experiment\l_1.cpp" alt="" coords="5,80,145,121"/>
+<area shape="rect" id="node3" href="$collision__experiment__2_8cpp.html" title="collision_experiment\l_2.cpp" alt="" coords="169,80,309,121"/>
+<area shape="rect" id="node4" href="$interactive__markers__test_8cpp.html" title="interactive_markers\l_test.cpp" alt="" coords="334,80,470,121"/>
+<area shape="rect" id="node5" href="$interactive__pick__test_8cpp.html" title="interactive_pick_test.cpp" alt="" coords="495,87,661,114"/>
+<area shape="rect" id="node6" href="$orientation__test_8cpp.html" title="orientation_test.cpp" alt="" coords="686,87,822,114"/>
+<area shape="rect" id="node7" href="$orientation__test__2_8cpp.html" title="orientation_test_2.cpp" alt="" coords="847,87,997,114"/>
+<area shape="rect" id="node8" href="$pick__place__test_8cpp.html" title="pick_place_test.cpp" alt="" coords="1022,87,1161,114"/>
+<area shape="rect" id="node9" href="$pick__place__test__2_8cpp.html" title="pick_place_test_2.cpp" alt="" coords="1185,87,1337,114"/>
+<area shape="rect" id="node10" href="$random__pick__place__arrange__test_8cpp.html" title="random_pick_place_arrange\l_test.cpp" alt="" coords="1361,80,1545,121"/>
+<area shape="rect" id="node11" href="$simple__experiment__1_8cpp.html" title="simple_experiment_1.cpp" alt="" coords="1569,87,1739,114"/>
+<area shape="rect" id="node12" href="$tool__attach_8cpp.html" title="tool_attach.cpp" alt="" coords="1764,87,1875,114"/>
+<area shape="rect" id="node13" href="$tool__exchange__test_8cpp.html" title="tool_exchange_test.cpp" alt="" coords="1899,87,2059,114"/>
+<area shape="rect" id="node14" href="$akit__pick__place_8cpp.html" title="akit_pick_place.cpp" alt="" coords="2084,87,2221,114"/>
+</map>

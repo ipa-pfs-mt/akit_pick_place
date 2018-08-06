@@ -1,0 +1,23 @@
+actions: []
+authors: ''
+brief: ''
+bugtracker: ''
+depends:
+- moveit_core
+- moveit_ros_perception
+- roscpp
+- moveit_visual_tools
+- interactive_markers
+- std_msgs
+- visualization_msgs
+- tf
+- catkin
+- moveit_ros_planning_interface
+description: The akit_pick_place package
+license: TODO
+maintainers: mostafabakr <mostafabakr@todo.todo>
+msgs: []
+package_type: package
+repo_url: ''
+srvs: []
+url: ''
