@@ -7,11 +7,11 @@ int main(int argc, char **argv){
   spinner.start();
 
   akit_pick_place akit;
-  akit.attachTool("gripper");
-  sleep(2.0);
-  akit.detachTool("gripper");
-  sleep(2.0);
-  akit.attachTool("bucket");
-  sleep(2.0);
-  akit.detachTool("bucket");
+  akit.attachTool("gripper_rotator");
+  sleep(1.0);
+  akit.detachTool("gripper_rotator");
+  sleep(1.0);
+  akit.attachTool("bucket_raedlinger");
+  sleep(1.0);
+  akit.detachTool("bucket_raedlinger");
 }

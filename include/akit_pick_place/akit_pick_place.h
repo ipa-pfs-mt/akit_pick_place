@@ -162,8 +162,8 @@ public:
   void addInteractiveMarkers();
   void addGround();
 
-  bool attachTool(std::string tool_id);
-  bool detachTool(std::string tool_id);
+  bool attachTool(std::string tool_frame_id);
+  bool detachTool(std::string tool_frame_id);
 
 };
 

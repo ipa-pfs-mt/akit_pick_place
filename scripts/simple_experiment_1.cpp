@@ -9,7 +9,7 @@ int main(int argc, char **argv){
   ros::AsyncSpinner spinner(1);
   spinner.start();
   akit_pick_place akit;
-  //akit.setPlannerID("PRMstarkConfigDefault");
+  //akit.setPlannerID("LBKPIECEkConfigDefault");
 
   double y = -2.7;
   //create 100 objects in simple orientations and record planning time

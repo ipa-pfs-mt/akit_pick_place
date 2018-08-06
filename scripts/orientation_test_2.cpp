@@ -29,28 +29,48 @@ int main(int argc, char **argv){
 
 
   for (int i = 0; i < 100; ++i){
-    //tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,2*M_PI),fRand(0.0,2*M_PI),fRand(0,2*M_PI)); //check more rotation around y-axis
-    tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,M_PI), 0.0 ,fRand(0,M_PI)); //check more rotation around y-axis
+    tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,2*M_PI),fRand(0.0,2*M_PI),fRand(0,2*M_PI)); //check more rotation around y-axis
+    //tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,2*M_PI), 0.0 ,fRand(0,2*M_PI)); //check more rotation around y-axis
 
     geometry_msgs::Pose pose;
     pose.position.x = fRand(-2.0,2.0);
-    pose.position.y = fRand(2.2,3.0);
+    pose.position.y = fRand(2.5,3.0);
     pose.position.z = 0.25;
+    /*
     pose.orientation.w = q[0];
     pose.orientation.x = q[1];
     pose.orientation.y = q[2];
     pose.orientation.z = q[3];
+    */
+    pose.orientation.w = 1.0;
+    pose.orientation.x = 0.0;
+    pose.orientation.y = 0.0;
+    pose.orientation.z = 0.0;
+
+
 
     geometry_msgs::Pose place = pose;
     place.position.x = 2.0;
 
-    /*moveit_msgs::CollisionObject cuboid = akit.addCollisionBlock(pose, "cuboid", CUBOID_X,CUBOID_Y,CUBOID_Z);
-    akit.generateGrasps(pose,CUBOID_X,CUBOID_Y,CUBOID_Z);
+  /*  moveit_msgs::CollisionObject cuboid = akit.addCollisionBlock(pose, "cuboid", CUBOID_X,CUBOID_Y,CUBOID_Z);
+    akit.generateGrasps(pose,CUBOID_X,CUBOID_Y,CUBOID_Z, true);
     if(!akit.pick(cuboid)){
       ROS_ERROR("Failed to pick");
       continue;
     }
-    akit.generateGrasps(place,CUBOID_X,CUBOID_Y,CUBOID_Z);
+    akit.generateGrasps(place,CUBOID_X,CUBOID_Y,CUBOID_Z, true);
+    if(!akit.place(cuboid)){
+      ROS_ERROR("Failed to place");
+      continue;
+    }
+*/
+   /*moveit_msgs::CollisionObject cuboid = akit.addCollisionBlock(pose, "cuboid", CUBOID_X,CUBOID_X,CUBOID_X);
+    akit.generateGrasps(pose,CUBOID_X);
+    if(!akit.pick(cuboid)){
+      ROS_ERROR("Failed to pick");
+      continue;
+    }
+    akit.generateGrasps(place,CUBOID_X);
     if(!akit.place(cuboid)){
       ROS_ERROR("Failed to place");
       continue;
