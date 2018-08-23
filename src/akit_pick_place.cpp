@@ -523,7 +523,7 @@ bool akit_pick_place::rotateGripper(double angle_rad){
   return (gripperSuccess ? true : false);
 }
 
-bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //needs adjusting !!(rotation in y-axis has problems)
+bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //needs adjusting !!
 
   //update start state to current state
   gripperState = gripperGroup->getCurrentState();
