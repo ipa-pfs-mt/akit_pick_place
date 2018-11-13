@@ -601,7 +601,7 @@ bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
       min_side = object_.primitives[0].dimensions[i];
     }
   }
-   //to get diameter not radius --> not needed for cubes and cuboids
+  //to get diameter not radius --> not needed for cubes and cuboids
   if(object_.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
     min_side *= 2;
   }
