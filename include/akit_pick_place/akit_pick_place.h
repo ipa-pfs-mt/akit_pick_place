@@ -37,6 +37,7 @@ private:
   ros::Publisher marker_pub;
   ros::Subscriber marker_sub;
   ros::ServiceClient planning_scene_diff_client;
+  ros::ServiceClient planning_scene_diff_client_;
   tf::TransformListener transform_listener;
 
   //akit stuff
@@ -68,7 +69,6 @@ private:
   static geometry_msgs::Pose interactive_pose;
   static std::string interactive_name;
   visualization_msgs::Marker marker;   //marker for grasp points
-
 
   //MoveIt! stuff
   moveit::planning_interface::MoveGroupInterface *akitGroup;

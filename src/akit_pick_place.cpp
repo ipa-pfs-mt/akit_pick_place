@@ -35,6 +35,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools(base_link_, "visualization_marker"));
   planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
+  planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
 }
 
@@ -66,6 +67,7 @@ akit_pick_place::akit_pick_place(){
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));
   planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
+  planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
   akitGroup->setPlanningTime(200.0);
 }
@@ -993,7 +995,9 @@ bool akit_pick_place::pick_place(moveit_msgs::CollisionObject object_){ //finali
 
 moveit_msgs::CollisionObject akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
                                                                    std::string cylinder_name, double cylinder_height, double cylinder_radius){
-  collision_objects_vector.clear(); //avoid re-addition of same object
+  //collision_objects_vector.clear(); //avoid re-addition of same object
+  moveit_msgs::ApplyPlanningScene planningSceneSrv_;
+  moveit_msgs::PlanningScene planningSceneMsg_;
   moveit_msgs::CollisionObject cylinder;
   cylinder.id = cylinder_name;
   cylinder.header.stamp = ros::Time::now();
@@ -1009,13 +1013,23 @@ moveit_msgs::CollisionObject akit_pick_place::addCollisionCylinder(geometry_msgs
   cylinder.primitive_poses.push_back(cylinder_pose);
   cylinder.operation = moveit_msgs::CollisionObject::ADD;
 
-  collision_objects_vector.push_back(cylinder);
-  planningSceneInterface.addCollisionObjects(collision_objects_vector);
+  //calling apply planning scene service
+  //collision_objects_vector.push_back(cylinder);
+  planningSceneMsg_.world.collision_objects.push_back(cylinder);
+  planningSceneMsg_.is_diff = true;
+  planningSceneSrv_.request.scene = planningSceneMsg_;
+  planning_scene_diff_client_.call(planningSceneSrv_);
+
+  //planningSceneInterface.addCollisionObjects(collision_objects_vector);
   return cylinder;
 }
 
+
 moveit_msgs::CollisionObject akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size_x, double block_size_y, double block_size_z ){
-  collision_objects_vector.clear(); //avoid re-addition of same object
+
+  //collision_objects_vector.clear(); //avoid re-addition of same object
+  moveit_msgs::ApplyPlanningScene planningSceneSrv_;
+  moveit_msgs::PlanningScene planningSceneMsg_;
   moveit_msgs::CollisionObject block;
   block.id = block_name;
   block.header.stamp = ros::Time::now();
@@ -1031,8 +1045,14 @@ moveit_msgs::CollisionObject akit_pick_place::addCollisionBlock(geometry_msgs::P
   block.primitive_poses.push_back(block_pose);
   block.operation = moveit_msgs::CollisionObject::ADD;
 
-  collision_objects_vector.push_back(block);
-  planningSceneInterface.addCollisionObjects(collision_objects_vector);
+  //calling apply planning scene service
+  //collision_objects_vector.push_back(block);
+  planningSceneMsg_.world.collision_objects.push_back(block);
+  planningSceneMsg_.is_diff = true;
+  planningSceneSrv_.request.scene = planningSceneMsg_;
+  planning_scene_diff_client_.call(planningSceneSrv_);
+
+  //planningSceneInterface.addCollisionObjects(collision_objects_vector);
   return block;
 }
 //instead of position constraints --> no motion in -z direction of world frame
