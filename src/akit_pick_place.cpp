@@ -3,6 +3,7 @@
 
 geometry_msgs::Pose akit_pick_place::interactive_pose;
 std::string akit_pick_place::interactive_name;
+//moveit_msgs::CollisionObject akit_pick_place::detach_collision_object_callback;
 
 akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
                                  std::string base_link_, std::string eef_parent_link_,std::string gripper_frame_,std::string bucket_frame_,
@@ -37,6 +38,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
   planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
+
 }
 
 akit_pick_place::akit_pick_place(){
@@ -68,9 +70,11 @@ akit_pick_place::akit_pick_place(){
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));
   planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
   planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
+  get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("get_planning_scene");
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
   akitGroup->setPlanningTime(200.0);
 }
+
 akit_pick_place::~akit_pick_place(){
 }
 void akit_pick_place::setFromGraspGenerator(bool grasp_generator){
@@ -796,6 +800,101 @@ void akit_pick_place::resetAllowedCollisionMatrix(std::string object_id){
   planning_scene_diff_client.call(planning_scene_srv);
 }
 
+//attach object to gripper using planning scene services
+bool akit_pick_place::attachCollisionObject(moveit_msgs::CollisionObject collisionObject){
+
+  //create attached collision object + planning scene instances
+  moveit_msgs::AttachedCollisionObject attached_collision_object;
+  moveit_msgs::ApplyPlanningScene planningSceneSrv_;
+  moveit_msgs::PlanningScene planning_scene;
+
+  //filling attached collision object instance
+  attached_collision_object.object.header.frame_id = collisionObject.header.frame_id;
+  attached_collision_object.object.id = collisionObject.id;
+  attached_collision_object.link_name = GRIPPER_FRAME;
+  attached_collision_object.object.primitives.push_back(collisionObject.primitives[0]);
+  attached_collision_object.object.primitive_poses.push_back(collisionObject.primitive_poses[0]);
+  attached_collision_object.object.operation = collisionObject.operation; //operation bit is ADD
+
+  //remove collision object from enviroment
+  ROS_INFO_STREAM("removing collision object from the enviroment");
+  attached_collision_object.object.operation = attached_collision_object.object.REMOVE; //operation bit is REMOVE from world
+
+  //add "removed" collisin object to planning scene
+  planning_scene.world.collision_objects.clear();
+  planning_scene.world.collision_objects.push_back(attached_collision_object.object);
+
+  //add collision object to attached collision objects
+  attached_collision_object.object.operation = attached_collision_object.object.ADD; //operation bit is ADD to attached
+  planning_scene.robot_state.attached_collision_objects.push_back(attached_collision_object);
+  planning_scene.is_diff = true;
+
+  //call service
+  planningSceneSrv_.request.scene = planning_scene;
+  planning_scene_diff_client_.call(planningSceneSrv_);
+
+  if (planningSceneSrv_.response.success == true){
+
+    ROS_INFO_STREAM("successfully attached collision object to gripper");
+    return true;
+
+  } else {
+
+    ROS_INFO_STREAM("failed to attach collision object to gripper");
+    return false;
+  }
+}
+
+//detach object to gripper using planning scene services
+bool akit_pick_place::detachCollisionObject(moveit_msgs::CollisionObject collisionObject){
+
+  //remove first from attached objects and add to the planning scene
+
+  //create necessary objects for services
+  moveit_msgs::AttachedCollisionObject detached_collision_object;
+  moveit_msgs::ApplyPlanningScene planningSceneSrv_;
+  moveit_msgs::PlanningScene planning_scene;
+  moveit_msgs::GetPlanningScene get_planning_scene_srv; //get planning scene service client object
+
+  //get robot state from service call --> returns  CURRENT attached collision object info so that object is returned to env at correct pose
+  get_planning_scene_srv.request.components.components = 4;
+  get_planning_scene_client.call(get_planning_scene_srv);
+
+  //filling detached collision object instance
+  detached_collision_object.object.header.frame_id = get_planning_scene_srv.response.scene.robot_state.attached_collision_objects[0].object.header.frame_id;
+  detached_collision_object.object.id = get_planning_scene_srv.response.scene.robot_state.attached_collision_objects[0].object.id;
+  detached_collision_object.link_name = get_planning_scene_srv.response.scene.robot_state.attached_collision_objects[0].link_name;
+  detached_collision_object.object.primitives.push_back(get_planning_scene_srv.response.scene.robot_state.attached_collision_objects[0].object.primitives[0]);
+  detached_collision_object.object.primitive_poses.push_back(get_planning_scene_srv.response.scene.robot_state.attached_collision_objects[0].object.primitive_poses[0]);
+  detached_collision_object.object.operation = collisionObject.operation; //operation bit is ADD
+
+  //removing from attached collision objects
+  detached_collision_object.object.operation = detached_collision_object.object.REMOVE; //operation bit is REMOVE from attached
+  planning_scene.robot_state.attached_collision_objects.clear();
+  planning_scene.robot_state.attached_collision_objects.push_back(detached_collision_object);
+  planning_scene.robot_state.is_diff = true;
+
+  //adding to world again
+  detached_collision_object.object.operation = detached_collision_object.object.ADD; //operation bit is ADD to world again
+  planning_scene.world.collision_objects.clear();
+  planning_scene.world.collision_objects.push_back(detached_collision_object.object); //spawns the object relative to gripper frame !! check
+  planning_scene.is_diff = true;
+
+  planningSceneSrv_.request.scene = planning_scene;
+  planning_scene_diff_client_.call(planningSceneSrv_);
+
+  if (planningSceneSrv_.response.success == true){
+
+    ROS_INFO_STREAM("successfully detached collision object from gripper");
+    return true;
+
+  } else {
+
+    ROS_INFO_STREAM("failed to detach collision object from gripper");
+    return false;
+  }
+}
+
 bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   ROS_INFO_STREAM("---------- Starting Pick Routine ----------");
 
@@ -876,17 +975,14 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     exit(1);
   }
 
-  //attaching object to gripper
-  bool isattached = gripperGroup->attachObject(object_.id);
-
-  //give time for planning scene to process
-  ros::Duration(1.0).sleep();
-  ROS_INFO_STREAM("Attaching object to gripper: " << (isattached ? "Attached" : "FAILED"));
-  if(!isattached){
-    ROS_ERROR("Failed to attach object to gripper");
+  if (!this->attachCollisionObject(object_)){
+    ROS_ERROR("Failed to attach collision object ");
     return false;
     exit(1);
   }
+
+  //give time for planning scene to process
+  ros::Duration(1.0).sleep();
 
   //cartesian motion upwards (post-grasp position)
   if (!this->executeAxisCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
@@ -944,16 +1040,16 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   }
 
   //detach object from gripper
-  bool isdetached = gripperGroup->detachObject(object_.id);
+  //bool isdetached = gripperGroup->detachObject(object_.id);
 
-  //give time for planning scene to process
-  ros::Duration(1.0).sleep();
-  ROS_INFO_STREAM("Detaching object from gripper: " << (isdetached ? "Detached" : "FAILED"));
-  if(!isdetached){
-    ROS_ERROR("Failed to detach object to gripper");
+  if (!this->detachCollisionObject(object_)){
+    ROS_ERROR("Failed to detach collision object ");
     return false;
     exit(1);
   }
+
+  //give time for planning scene to process
+  ros::Duration(1.0).sleep();
 
   //opening gripper
   if(!this->openGripper()){
