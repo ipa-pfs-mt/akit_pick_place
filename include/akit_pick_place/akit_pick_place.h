@@ -16,6 +16,8 @@
 #include <interactive_markers/interactive_marker_server.h>
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
+#include <e1_motion_sequence/SetGoal.h>
+#include <e1_motion_sequence/GoToGoal.h>
 
 
 #define UP true

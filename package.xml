@@ -76,7 +76,7 @@
   <exec_depend>visualization_msgs</exec_depend>
   <exec_depend>moveit_visual_tools</exec_depend>
   <exec_depend>tf</exec_depend>
-
+  <depend>e1_motion_sequence</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
