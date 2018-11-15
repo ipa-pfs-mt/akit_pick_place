@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   visualization_msgs
   tf
+  e1_motion_sequence
 )
 
 ## System dependencies are found with CMake's conventions

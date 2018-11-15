@@ -10,11 +10,14 @@
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_msgs/DisplayTrajectory.h>
 #include <moveit_msgs/ApplyPlanningScene.h>
+#include <moveit_msgs/GetPlanningScene.h>
 #include <moveit_msgs/AttachedCollisionObject.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
+#include <e1_motion_sequence/SetGoal.h>
+#include <e1_motion_sequence/GoToGoal.h>
 
 
 #define UP true
@@ -37,6 +40,8 @@ private:
   ros::Publisher marker_pub;
   ros::Subscriber marker_sub;
   ros::ServiceClient planning_scene_diff_client;
+  ros::ServiceClient planning_scene_diff_client_;
+  ros::ServiceClient get_planning_scene_client;
   tf::TransformListener transform_listener;
 
   //akit stuff
@@ -67,8 +72,8 @@ private:
   AttachedCollisionObjectsMap attached_collision_objects_map;
   static geometry_msgs::Pose interactive_pose;
   static std::string interactive_name;
-  visualization_msgs::Marker marker;   //marker for grasp points
 
+  visualization_msgs::Marker marker;   //marker for grasp points
 
   //MoveIt! stuff
   moveit::planning_interface::MoveGroupInterface *akitGroup;
@@ -100,6 +105,7 @@ private:
   * @return stores marker pose and name.
   */
   static void processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
+
   /**
   * @brief Adds interactive marker with the given pose and shape.
   * @param marker_pose a geometry_msgs::Pose message containing the marker pose.
@@ -255,6 +261,8 @@ public:
   void addOrientationConstraints();
   void writeOutputPlanningTime(std::string file_name);
   void writeOutputTrajectoryLength(std::string file_name);
+
+  //akit methods
   /**
    * @brief generateGrasps Grasp Pose generator for cubes, generates grasp poses for cubes pick and place pipeline
    * @param block_pose_ a geometry_msgs::Pose message corresponding to the pose of the cube
@@ -341,6 +349,18 @@ public:
    * @param object_id object to be removed from acm
    */
   void resetAllowedCollisionMatrix(std::string object_id);
+  /**
+   * @brief attachCollisionObject attaches collision object to gripper frame using planning scene monitor
+   * @param collisionObject moveit_msgs collision object to be grasped and attached
+   * @return
+   */
+  bool attachCollisionObject(moveit_msgs::CollisionObject collisionObject);
+  /**
+   * @brief detachCollisionObject detaches collision object from gripper frame using planning scene monitor
+   * @param collisionObject moveit_msgs collision object to be detached from gripper frame
+   * @return
+   */
+  bool detachCollisionObject(moveit_msgs::CollisionObject collisionObject);
   /**
    * @brief pick is pick routine
    * @param object_ a moveit_msgs::CollisionObject message of the object to be picked
