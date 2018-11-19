@@ -42,6 +42,8 @@ private:
   ros::ServiceClient planning_scene_diff_client;
   ros::ServiceClient planning_scene_diff_client_;
   ros::ServiceClient get_planning_scene_client;
+  ros::ServiceClient e1_set_goal_client;
+  ros::ServiceClient e1_go_to_goal_client;
   tf::TransformListener transform_listener;
 
   //akit stuff
@@ -96,6 +98,10 @@ private:
   moveit_msgs::PlanningScene planning_scene_msg_;
   moveit_msgs::ApplyPlanningScene planning_scene_srv;
   collision_detection::AllowedCollisionMatrix acm;
+
+  //IOSB stuff
+  e1_motion_sequence::SetGoal e1_set_goal_srv;
+  e1_motion_sequence::GoToGoal e1_go_to_srv;
 
   //interactive markers
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
@@ -333,7 +339,7 @@ public:
    * @param pose string containing name of pose
    * @return true if motion planning succeeds
    */
-  bool planAndExecute(std::vector<geometry_msgs::Pose> poses, std::string pose);
+  bool planAndExecute(std::vector<geometry_msgs::Pose> poses, std::string pose, std::string planning_group = "e1_stationary");
   /**
    * @brief allowObjectCollision allows collision of gripper links with object
    * @param object_id string containing objects id

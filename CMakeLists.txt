@@ -199,6 +199,9 @@ target_link_libraries(collision_experiment_2 ${catkin_LIBRARIES})
 add_executable(tutorial scripts/tutorial.cpp src/akit_pick_place.cpp)
 target_link_libraries(tutorial ${catkin_LIBRARIES})
 
+add_executable(iosb_test scripts/iosb_test.cpp src/akit_pick_place.cpp)
+target_link_libraries(iosb_test ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############
