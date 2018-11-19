@@ -3,7 +3,6 @@
 
 geometry_msgs::Pose akit_pick_place::interactive_pose;
 std::string akit_pick_place::interactive_name;
-//moveit_msgs::CollisionObject akit_pick_place::detach_collision_object_callback;
 
 akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
                                  std::string base_link_, std::string eef_parent_link_,std::string gripper_frame_,std::string bucket_frame_,
@@ -22,7 +21,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   FromGraspGenerator = set_from_grasp_generator_;
   side_grasps = false;
   waypoints = std::vector<geometry_msgs::Pose>(1);
-  akitGroup = new moveit::planning_interface::MoveGroupInterface(planning_group_);
+  /*akitGroup = new moveit::planning_interface::MoveGroupInterface(planning_group_);
   gripperGroup = new moveit::planning_interface::MoveGroupInterface(eef_group_);
   akitJointModelGroup = akitGroup->getCurrentState()->getJointModelGroup(planning_group_);
   gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup(eef_group_);
@@ -34,11 +33,13 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   robotModelPtr = robotModelLoader->getModel();
   planningScenePtr.reset(new planning_scene::PlanningScene(robotModelPtr));
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
-  visual_tools.reset(new moveit_visual_tools::MoveItVisualTools(base_link_, "visualization_marker"));
-  planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
-  planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
-  marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
-
+  visual_tools.reset(new moveit_visual_tools::MoveItVisualTools(base_link_, "visualization_marker"));*/
+  //marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
+  planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
+  planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
+  get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("/e1/moveit_ik/get_planning_scene");
+  e1_set_goal_client = nh.serviceClient<e1_motion_sequence::SetGoal>("/e1_motion_sequence/add_goal");
+  e1_go_to_goal_client = nh.serviceClient<e1_motion_sequence::GoToGoal>("/e1_motion_sequence/go_to_goal");
 }
 
 akit_pick_place::akit_pick_place(){
@@ -55,7 +56,7 @@ akit_pick_place::akit_pick_place(){
   side_grasps = false;
   FromGraspGenerator = true;
   waypoints = std::vector<geometry_msgs::Pose>(1);
-  akitGroup = new moveit::planning_interface::MoveGroupInterface("e1_complete");
+  /*akitGroup = new moveit::planning_interface::MoveGroupInterface("e1_complete");
   akitJointModelGroup = akitGroup->getCurrentState()->getJointModelGroup("e1_complete");
   gripperGroup = new moveit::planning_interface::MoveGroupInterface("gripper");
   gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup("gripper");
@@ -67,12 +68,14 @@ akit_pick_place::akit_pick_place(){
   robotModelPtr = robotModelLoader->getModel();
   planningScenePtr.reset(new planning_scene::PlanningScene(robotModelPtr));
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
-  visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));
-  planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
-  planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("apply_planning_scene");
-  get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("get_planning_scene");
-  marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
-  akitGroup->setPlanningTime(200.0);
+  visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));*/
+  //marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
+  planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
+  planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
+  get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("/e1/moveit_ik/get_planning_scene");
+  e1_set_goal_client = nh.serviceClient<e1_motion_sequence::SetGoal>("/e1_motion_sequence/add_goal");
+  e1_go_to_goal_client = nh.serviceClient<e1_motion_sequence::GoToGoal>("/e1_motion_sequence/go_to_goal");
+  //akitGroup->setPlanningTime(200.0);
 }
 
 akit_pick_place::~akit_pick_place(){
@@ -697,13 +700,71 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 }
 
 //executes first pose reached in input position vector
-bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std::string pose){
+bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std::string pose, std::string planning_group){
 
+  int count = 0;
+
+  e1_set_goal_client.waitForExistence();
+
+  //planning service client unchanged variables
+  e1_set_goal_srv.request.planning_group = planning_group;
+  e1_set_goal_srv.request.cartesian_goal_pose = true;
+  e1_set_goal_srv.request.project_pose = false;
+  e1_set_goal_srv.request.composite_path = false;
+  e1_set_goal_srv.request.action = 1;
+
+  //execution service client unchanged variables
+
+  for (int i = 0; i < poses.size(); i++){
+
+    //clear vector to add new pose
+    e1_set_goal_srv.request.goal_position.clear();
+
+    //grasp poses
+    e1_set_goal_srv.request.goal_position.push_back(poses[i].position.x);
+    e1_set_goal_srv.request.goal_position.push_back(poses[i].position.y);
+    e1_set_goal_srv.request.goal_position.push_back(poses[i].position.z);
+    e1_set_goal_srv.request.goal_position.push_back(poses[i].orientation.x);
+    e1_set_goal_srv.request.goal_position.push_back(poses[i].orientation.y);
+    e1_set_goal_srv.request.goal_position.push_back(poses[i].orientation.z);
+    e1_set_goal_srv.request.goal_position.push_back(poses[i].orientation.w);
+
+    //call motion planning service
+    e1_set_goal_client.call(e1_set_goal_srv);
+
+    if (e1_set_goal_srv.response.success == true){
+      ROS_INFO_STREAM("motion planning to " << pose << " position " << count << " successful. Execution pending");
+      e1_go_to_srv.request.goal_number = e1_set_goal_srv.response.goal_number;
+
+      //call motion execution service
+      e1_go_to_goal_client.call(e1_go_to_srv);
+
+      if (e1_go_to_srv.response.error.val == moveit_msgs::MoveItErrorCodes::SUCCESS){
+        ROS_INFO_STREAM("Execution is successfull");
+        break;
+      } else {
+        ROS_INFO_STREAM("Execution failed");
+        return false;
+        exit(1);
+      }
+    } else {
+      ROS_INFO_STREAM("motion planning to " << pose << " position " << count << " failed. Replanning.");
+      count++;
+      if (count == poses.size()){
+         ROS_ERROR_STREAM("Failed to plan to " << pose << " position");
+         return false;
+         exit(1);
+      }
+      continue;
+    }
+ }
+
+/*
   //update start state to current state
   akitState = akitGroup->getCurrentState();
   akitGroup->setStartState(*akitState);
 
-  int count = 0;
+  //int count = 0;
   bool executed, found_ik;
 
   for(int i = 0; i < poses.size(); ++i){
@@ -745,7 +806,7 @@ bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std
         break;
       }
     }
-  }
+  }*/
 }
 
 //allow gripper to touch object to be picked
