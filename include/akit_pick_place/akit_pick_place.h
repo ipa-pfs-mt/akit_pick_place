@@ -18,6 +18,7 @@
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <e1_motion_sequence/SetGoal.h>
 #include <e1_motion_sequence/GoToGoal.h>
+#include <e1_interface/E1Command.h>
 
 
 #define UP true
@@ -42,8 +43,6 @@ private:
   ros::ServiceClient planning_scene_diff_client;
   ros::ServiceClient planning_scene_diff_client_;
   ros::ServiceClient get_planning_scene_client;
-  ros::ServiceClient e1_set_goal_client;
-  ros::ServiceClient e1_go_to_goal_client;
   tf::TransformListener transform_listener;
 
   //akit stuff
@@ -102,6 +101,9 @@ private:
   //IOSB stuff
   e1_motion_sequence::SetGoal e1_set_goal_srv;
   e1_motion_sequence::GoToGoal e1_go_to_srv;
+  ros::Publisher e1_gripper_pub;
+  ros::ServiceClient e1_set_goal_client;
+  ros::ServiceClient e1_go_to_goal_client;
 
   //interactive markers
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;

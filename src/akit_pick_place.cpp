@@ -35,6 +35,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools(base_link_, "visualization_marker"));*/
   //marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
+  e1_gripper_pub = nh.advertise<e1_interface::E1Command>("/e1/e1_command", 10);
   planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
   planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
   get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("/e1/moveit_ik/get_planning_scene");
@@ -70,6 +71,7 @@ akit_pick_place::akit_pick_place(){
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));*/
   //marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
+  e1_gripper_pub = nh.advertise<e1_interface::E1Command>("/e1/e1_command", 10);
   planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
   planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
   get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("/e1/moveit_ik/get_planning_scene");
@@ -578,7 +580,7 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
 
 bool akit_pick_place::openGripper(){
 
-  double gripper_open_angle = M_PI/3; //60 deg
+  /*double gripper_open_angle = M_PI/3; //60 deg
 
   //update start state to current state
   gripperState = gripperGroup->getCurrentState();
@@ -594,7 +596,32 @@ bool akit_pick_place::openGripper(){
     gripperGroup->execute(gripperMotionPlan);
     ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Opened gripper" : "FAILED TO OPEN GRIPPER"));
   }
-  return (gripperSuccess ? true : false);
+  return (gripperSuccess ? true : false);*/
+
+  //temporary open gripper function until joint measurements is available in reality
+  e1_interface::E1Command gripper_command;
+  gripper_command.header.seq = 0;
+  gripper_command.header.stamp.sec = 0;
+  gripper_command.header.stamp.nsec = 0;
+  gripper_command.blade[0] = false;
+  gripper_command.blade[1] = false;
+  gripper_command.track_valve_opening[0] = 0;
+  gripper_command.track_valve_opening[1] = 0;
+  gripper_command.slewing_valve_opening = 0;
+  gripper_command.boom_valve_opening = 0;
+  gripper_command.stick_valve_opening = 0;
+  gripper_command.bucket_valve_opening = 0;
+  gripper_command.cabin_rotation_valve_opening = 0;
+  gripper_command.auxiliary_hydraulic_valve_opening = -400;  //open gripper to near max value (fixed)
+  gripper_command.third_control_circuit_valve_opening = 0;
+  gripper_command.auxiliary_hydraulic_switch_valve = false;
+
+  ros::Time start_time = ros::Time::now();
+  ros::Duration timeout(2.0); // Timeout of 2 seconds
+  while(ros::Time::now() - start_time < timeout) {
+    e1_gripper_pub.publish(gripper_command);
+  }
+  return true;
 }
 
 bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
@@ -1112,7 +1139,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   //give time for planning scene to process
   ros::Duration(1.0).sleep();
 
-  //opening gripper
+  //ning gripper
   if(!this->openGripper()){
     ROS_ERROR("Failed to open Gripper");
     return false;
