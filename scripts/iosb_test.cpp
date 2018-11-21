@@ -9,13 +9,13 @@ int main(int argc, char **argv){
   akit_pick_place akit;
 
   geometry_msgs::Pose working;
-  working.position.x = 2.40582;
-  working.position.y = -0.88369;
-  working.position.z = 1.47956;
-  working.orientation.w = 0.984;
-  working.orientation.x = 0.0;
-  working.orientation.y = 0.0;
-  working.orientation.z = -0.176;
+  working.position.x = 2.74662;
+  working.position.y = -0.0353878;
+  working.position.z = 1.6472;
+  working.orientation.w = 0.999928;
+  working.orientation.x = 9.60226e-07;
+  working.orientation.y = 0.0119892;
+  working.orientation.z = -8.00853e-05;
 
   geometry_msgs::Pose not_working1 = working;
   not_working1.position.x = 5.0;
@@ -28,12 +28,31 @@ int main(int argc, char **argv){
   test_poses.push_back(not_working2);
   test_poses.push_back(working);
 
+  geometry_msgs::Pose pose;
+  pose.orientation.w = 1.0;
+  pose.position.x = 3.0;
+  pose.position.y = 0.0;
+  pose.position.z = 0.17;
+
   std::string position = "pregrasp";
-  akit.planAndExecute(test_poses, position);
+
+  akit.addCollisionCylinder(pose,"cylinder", 0.5,0.2);
 
   sleep(1.0);
 
-  akit.executeAxisCartesianMotion(false, 0.5, 'z');
+  akit.allowObjectCollision("cylinder");
 
-  //akit.openGripper();
+  sleep(1.0);
+
+  akit.planAndExecute(test_poses, position);
+
+  /*sleep(1.0);
+
+  akit.openGripper();*/
+
+  sleep(1.0);
+
+  akit.executeAxisCartesianMotion(false, 0.35, 'z');
+
+
 }

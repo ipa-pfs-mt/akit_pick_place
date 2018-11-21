@@ -108,10 +108,10 @@ private:
   ros::ServiceClient e1_go_to_goal_client;
   ros::Subscriber e1_joint_states_subscriber;
   ros::Publisher e1_trajectory_publisher;
-  sensor_msgs::JointState e1_joint_states;
   ros::ServiceClient e1_compute_fk_client;
   ros::ServiceClient e1_cartesian_path_client;
   ros::ServiceClient e1_execute_traj_client;
+  sensor_msgs::JointState e1_joint_states;
 
   //interactive markers
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
