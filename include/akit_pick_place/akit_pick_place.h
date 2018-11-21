@@ -12,6 +12,10 @@
 #include <moveit_msgs/ApplyPlanningScene.h>
 #include <moveit_msgs/GetPlanningScene.h>
 #include <moveit_msgs/AttachedCollisionObject.h>
+#include <moveit_msgs/GetPositionFK.h>
+#include <moveit_msgs/GetCartesianPath.h>
+#include <moveit_msgs/MoveGroupActionResult.h>
+#include <moveit_msgs/ExecuteKnownTrajectory.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -51,7 +55,7 @@ private:
   std::string GRIPPER_FRAME;
   std::string EEF_GROUP;
   std::string BUCKET_FRAME;
-  std::string PLANNING_GROUP_NAME;
+  std::string PLANNING_GROUP;
   std::string EEF_PARENT_LINK; //last link in planning group kinematic chain "quickcoupler"
   double GRIPPER_LENGTH;   //for grasp generation
   double GRIPPER_JAW_LENGTH; //for cartesian motion
@@ -99,11 +103,15 @@ private:
   collision_detection::AllowedCollisionMatrix acm;
 
   //IOSB stuff
-  e1_motion_sequence::SetGoal e1_set_goal_srv;
-  e1_motion_sequence::GoToGoal e1_go_to_srv;
   ros::Publisher e1_gripper_pub;
   ros::ServiceClient e1_set_goal_client;
   ros::ServiceClient e1_go_to_goal_client;
+  ros::Subscriber e1_joint_states_subscriber;
+  ros::Publisher e1_trajectory_publisher;
+  sensor_msgs::JointState e1_joint_states;
+  ros::ServiceClient e1_compute_fk_client;
+  ros::ServiceClient e1_cartesian_path_client;
+  ros::ServiceClient e1_execute_traj_client;
 
   //interactive markers
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
@@ -269,6 +277,9 @@ public:
   void addOrientationConstraints();
   void writeOutputPlanningTime(std::string file_name);
   void writeOutputTrajectoryLength(std::string file_name);
+
+  void jointStatesCallback(const sensor_msgs::JointState joint_states_msg);
+
 
   //akit methods
   /**

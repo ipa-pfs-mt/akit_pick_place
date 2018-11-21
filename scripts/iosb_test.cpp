@@ -29,7 +29,11 @@ int main(int argc, char **argv){
   test_poses.push_back(working);
 
   std::string position = "pregrasp";
-  //akit.planAndExecute(test_poses, position);
+  akit.planAndExecute(test_poses, position);
 
-  akit.openGripper();
+  sleep(1.0);
+
+  akit.executeAxisCartesianMotion(false, 0.5, 'z');
+
+  //akit.openGripper();
 }

@@ -8,7 +8,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
                                  std::string base_link_, std::string eef_parent_link_,std::string gripper_frame_,std::string bucket_frame_,
                                  double gripper_length_, double gripper_jaw_length_, double gripper_side_length_,
                                  bool set_from_grasp_generator_){
-  PLANNING_GROUP_NAME = planning_group_;
+  PLANNING_GROUP = planning_group_;
   EEF_GROUP = eef_group_;
   WORLD_FRAME = world_frame_;
   BASE_LINK = base_link_;
@@ -41,10 +41,11 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
   get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("/e1/moveit_ik/get_planning_scene");
   e1_set_goal_client = nh.serviceClient<e1_motion_sequence::SetGoal>("/e1_motion_sequence/add_goal");
   e1_go_to_goal_client = nh.serviceClient<e1_motion_sequence::GoToGoal>("/e1_motion_sequence/go_to_goal");
+
 }
 
 akit_pick_place::akit_pick_place(){
-  PLANNING_GROUP_NAME = "e1_complete";
+  PLANNING_GROUP = "e1_stationary";
   WORLD_FRAME = "odom_combined";
   EEF_GROUP = "gripper";
   BASE_LINK = "chassis";
@@ -69,15 +70,19 @@ akit_pick_place::akit_pick_place(){
   robotModelPtr = robotModelLoader->getModel();
   planningScenePtr.reset(new planning_scene::PlanningScene(robotModelPtr));
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
-  visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));*/
-  //marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
+  visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));
+  marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);*/
   e1_gripper_pub = nh.advertise<e1_interface::E1Command>("/e1/e1_command", 10);
   planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
   planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
   get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("/e1/moveit_ik/get_planning_scene");
   e1_set_goal_client = nh.serviceClient<e1_motion_sequence::SetGoal>("/e1_motion_sequence/add_goal");
   e1_go_to_goal_client = nh.serviceClient<e1_motion_sequence::GoToGoal>("/e1_motion_sequence/go_to_goal");
-  //akitGroup->setPlanningTime(200.0);
+  e1_compute_fk_client = nh.serviceClient<moveit_msgs::GetPositionFK>("/e1_moveit_interface/compute_fk");
+  e1_cartesian_path_client = nh.serviceClient<moveit_msgs::GetCartesianPath>("/e1/moveit_ik/compute_cartesian_path");
+  e1_trajectory_publisher = nh.advertise<moveit_msgs::MoveGroupActionResult>("/e1/moveit_ik/move_group/result", 1000);
+  e1_execute_traj_client = nh.serviceClient<moveit_msgs::ExecuteKnownTrajectory>("/e1_moveit_interface/execute_kinematic_path");
+  e1_joint_states_subscriber = nh.subscribe("/e1_interface/joint_states", 1000, &akit_pick_place::jointStatesCallback, this);
 }
 
 akit_pick_place::~akit_pick_place(){
@@ -95,13 +100,13 @@ void akit_pick_place::setGripperFrame(std::string gripper_frame_){
   GRIPPER_FRAME = gripper_frame_;
 }
 void akit_pick_place::setDefaultPlanningGroup(){
-  PLANNING_GROUP_NAME = "e1_complete";
+  PLANNING_GROUP = "e1_complete";
 }
 void akit_pick_place::setGripperGroup(std::string eef_group_){
   EEF_GROUP = eef_group_;
 }
 void akit_pick_place::setPlanningGroup(std::string planning_group_){
-  PLANNING_GROUP_NAME = planning_group_;
+  PLANNING_GROUP = planning_group_;
 }
 void akit_pick_place::setPreGraspPose(geometry_msgs::Pose preGraspPose){
   pre_grasp_pose = preGraspPose;
@@ -122,7 +127,7 @@ void akit_pick_place::setPlannerID(std::string planner_id_){
   akitGroup->setPlannerId(planner_id_);
 }
 std::string akit_pick_place::getPlanningGroup(){
-  return PLANNING_GROUP_NAME;
+  return PLANNING_GROUP;
 }
 std::string akit_pick_place::getGripperGroup(){
   return EEF_GROUP;
@@ -661,8 +666,142 @@ bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
   return (gripperSuccess ? true : false);
 }
 
+void akit_pick_place::jointStatesCallback(const sensor_msgs::JointState joint_states_msg){
+   e1_joint_states = joint_states_msg;
+}
+
 bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesian_distance, char axis){
 
+  //cartesian motion function for iosb interface
+
+  //get current pose
+
+  //getPosition fk object
+  moveit_msgs::GetPositionFK getPositionFK_msg;
+  getPositionFK_msg.request.header.frame_id = BASE_LINK;
+  nh.getParam("/e1/moveit_ik/" + PLANNING_GROUP , getPositionFK_msg.request.fk_link_names);
+
+  for (int i = 0; i < getPositionFK_msg.request.fk_link_names.size(); ++i){
+    getPositionFK_msg.request.robot_state.joint_state.name.push_back(e1_joint_states.name[i]);
+    getPositionFK_msg.request.robot_state.joint_state.position.push_back(e1_joint_states.position[i]);
+    getPositionFK_msg.request.robot_state.joint_state.velocity.push_back(e1_joint_states.velocity[i]);
+  }
+
+  //call forward kinematics service
+  e1_compute_fk_client.call(getPositionFK_msg);
+  if (getPositionFK_msg.response.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS){
+    ROS_INFO_STREAM("Successfully computed forward kinematics to get current pose in " + BASE_LINK + " frame");
+  } else {
+    ROS_ERROR("Failed to compute forward kinematics, current pose unknown");
+    return false;
+    exit(1);
+  }
+
+  //start transformation to quickcoupler frame
+  geometry_msgs::PoseStamped pose_in_base_link_frame, pose_in_eef_frame;
+
+  pose_in_base_link_frame = getPositionFK_msg.response.pose_stamped.back(); //eef == quickcoupler is the last link in the chain
+  pose_in_base_link_frame.header.frame_id = BASE_LINK;  //add frame reference
+
+  //cartesian motion service object
+  moveit_msgs::GetCartesianPath cartesian_path_msg;
+
+  //push back first cartesian path point before transformation, service fails if only one waypoint is given
+  cartesian_path_msg.request.waypoints.push_back(pose_in_base_link_frame.pose);
+
+  //modify second way point
+  //transform from base link frame to quickcoupler frame, wait to avoid time difference exceptions
+  transform_listener.waitForTransform(EEF_PARENT_LINK, BASE_LINK, ros::Time::now(), ros::Duration(5.0));
+  transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_base_link_frame, BASE_LINK, pose_in_eef_frame);
+
+  if (!direction){        //downwards cartesian motion in quickcoupler frame
+    switch (axis){
+    case 'x':
+      pose_in_eef_frame.pose.position.x -= cartesian_distance;
+      break;
+    case 'y':
+      pose_in_eef_frame.pose.position.y -= cartesian_distance;
+      break;
+    case 'z':
+      pose_in_eef_frame.pose.position.z -= cartesian_distance;
+      break;
+    }
+  } else {                //upwards cartesian motion in quickcoupler frame
+    switch (axis){
+    case 'x':
+      pose_in_eef_frame.pose.position.x += cartesian_distance;
+      break;
+    case 'y':
+      pose_in_eef_frame.pose.position.y += cartesian_distance;
+      break;
+    case 'z':
+      pose_in_eef_frame.pose.position.z += cartesian_distance;
+      break;
+    }
+  }
+  //transform back to base frame, wait to avoid time difference exceptions
+  transform_listener.waitForTransform(BASE_LINK, EEF_PARENT_LINK, ros::Time::now(), ros::Duration(5.0));
+  transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_eef_frame, EEF_PARENT_LINK, pose_in_base_link_frame);
+
+  //header frame for the specified waypoints
+  cartesian_path_msg.request.header.frame_id = BASE_LINK;
+  //start state of the cartesian path is the current state of the robot
+  cartesian_path_msg.request.start_state = getPositionFK_msg.request.robot_state;
+
+  cartesian_path_msg.request.group_name = PLANNING_GROUP;
+  cartesian_path_msg.request.link_name =  EEF_PARENT_LINK;
+
+  //second waypoint
+  cartesian_path_msg.request.waypoints.push_back(pose_in_base_link_frame.pose);
+  cartesian_path_msg.request.max_step = 0.05;
+  cartesian_path_msg.request.jump_threshold = 0.0;
+
+  //call service server
+   e1_cartesian_path_client.call(cartesian_path_msg);
+
+   if (cartesian_path_msg.response.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS){
+      ROS_INFO_STREAM("Successfully computed "  << cartesian_path_msg.response.fraction * 100 << "% cartesian path");
+   } else {
+     ROS_ERROR("Failed to compute cartesian path");
+     return false;
+     exit(1);
+   }
+
+   sleep(0.5);
+
+   if ((cartesian_path_msg.response.fraction * 100) >= 50.0){
+      moveit_msgs::MoveGroupActionResult traj_msg;
+
+      //trajectory message for planned traj is the cartesian path trajectory
+      traj_msg.result.planned_trajectory = cartesian_path_msg.response.solution;
+
+      //set the error code to SUCCESS and status to SUCCEEDED for the planner
+      traj_msg.status.status = 3;
+      traj_msg.result.error_code.val = 1;
+      traj_msg.result.trajectory_start.joint_state.header.frame_id = BASE_LINK;
+
+      //add current joint states
+      traj_msg.result.trajectory_start = cartesian_path_msg.request.start_state;
+      e1_trajectory_publisher.publish(traj_msg);
+
+      //execute trajectory service parameters left empty
+      moveit_msgs::ExecuteKnownTrajectory execute_traj_srv;
+      e1_execute_traj_client.call(execute_traj_srv);
+
+
+      if (execute_traj_srv.response.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS){
+        ROS_INFO_STREAM("Successfully cartesian trajectory executed");
+      } else {
+        ROS_ERROR_STREAM("failed to execute cartesian trajectorty = " << execute_traj_srv.response.error_code.val);
+        return false;
+        exit(1);
+      }
+   } else {
+     ROS_ERROR("Cannot execute cartesian motion, plan < 50 %%");
+     return false;
+   }
+
+/*
   //update start state to current state
   akitState = akitGroup->getCurrentState();
   akitGroup->setStartState(*akitState);
@@ -723,13 +862,15 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
   } else {
     ROS_ERROR("Cannot execute cartesian motion, plan < 50 %%");
     return false;
-  }
+  }*/
 }
 
 //executes first pose reached in input position vector
 bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std::string pose, std::string planning_group){
 
   int count = 0;
+  e1_motion_sequence::SetGoal e1_set_goal_srv;
+  e1_motion_sequence::GoToGoal e1_go_to_srv;
 
   e1_set_goal_client.waitForExistence();
 
@@ -759,32 +900,39 @@ bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std
     //call motion planning service
     e1_set_goal_client.call(e1_set_goal_srv);
 
+    //check that setting the goal was successful
     if (e1_set_goal_srv.response.success == true){
-      ROS_INFO_STREAM("motion planning to " << pose << " position " << count << " successful. Execution pending");
-      e1_go_to_srv.request.goal_number = e1_set_goal_srv.response.goal_number;
-
-      //call motion execution service
-      e1_go_to_goal_client.call(e1_go_to_srv);
-
-      if (e1_go_to_srv.response.error.val == moveit_msgs::MoveItErrorCodes::SUCCESS){
-        ROS_INFO_STREAM("Execution is successfull");
-        break;
-      } else {
-        ROS_INFO_STREAM("Execution failed");
-        return false;
-        exit(1);
-      }
+      ROS_INFO_STREAM("Successfully added pose to list");
     } else {
-      ROS_INFO_STREAM("motion planning to " << pose << " position " << count << " failed. Replanning.");
-      count++;
-      if (count == poses.size()){
-         ROS_ERROR_STREAM("Failed to plan to " << pose << " position");
-         return false;
-         exit(1);
-      }
-      continue;
+      ROS_ERROR("Failed to add pose to list");
+      return false;
+      exit(1);
     }
- }
+
+    //fill GoToGoal srv
+    e1_go_to_srv.request.goal_number = e1_set_goal_srv.response.goal_number;
+
+    //call motion execution service
+    e1_go_to_goal_client.call(e1_go_to_srv);
+
+    if (e1_go_to_srv.response.error.val != moveit_msgs::MoveItErrorCodes::SUCCESS){
+
+       ROS_ERROR_STREAM("motion planning to " << pose << " position " << count << " failed on error code = " << e1_go_to_srv.response.error.val);
+       ROS_INFO_STREAM("Replanning");
+       count++;
+         if (count == poses.size()){
+           ROS_ERROR_STREAM("Failed to plan to " << pose << " position");
+           return false;
+           exit(1);
+         }
+       continue;
+
+    } else {
+
+      ROS_INFO_STREAM("Execution is successfull");
+      break;
+    }
+}
 
 /*
   //update start state to current state
