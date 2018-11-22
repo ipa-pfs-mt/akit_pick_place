@@ -1355,7 +1355,6 @@ moveit_msgs::CollisionObject akit_pick_place::addCollisionCylinder(geometry_msgs
   return cylinder;
 }
 
-
 moveit_msgs::CollisionObject akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size_x, double block_size_y, double block_size_z ){
 
   //collision_objects_vector.clear(); //avoid re-addition of same object
@@ -1400,15 +1399,42 @@ void akit_pick_place::addGround(){
   ros::Duration(1.0).sleep();
 }
 
+CollisionObjectsMap akit_pick_place::getSceneCollisionObjects(){
+
+  //call get planning scene service
+  moveit_msgs::GetPlanningScene get_planning_scene_msg;
+  get_planning_scene_msg.request.components.components = 16; //WORLD_OBJECT_GEOMETRY
+  get_planning_scene_client.call(get_planning_scene_msg);
+
+  std::vector<moveit_msgs::CollisionObject> scene_objects = get_planning_scene_msg.response.scene.world.collision_objects;
+  CollisionObjectsMap CollisionObjectsMap_;
+
+  for (int i = 0; i < scene_objects.size(); ++i){
+    CollisionObjectsMap_.insert({scene_objects[i].id, scene_objects[i]});
+  }
+  return CollisionObjectsMap_;
+}
+
+AttachedCollisionObjectsMap akit_pick_place::getAttachedCollisionObjects(){
+  //call get planning scene service
+  moveit_msgs::GetPlanningScene get_planning_scene_msg;
+  get_planning_scene_msg.request.components.components = 4; //ROBOT_STATE_ATTACHED_OBJECTS
+  get_planning_scene_client.call(get_planning_scene_msg);
+
+  std::vector<moveit_msgs::AttachedCollisionObject> attached_objects = get_planning_scene_msg.response.scene.robot_state.attached_collision_objects;
+  AttachedCollisionObjectsMap AttachedCollisionObjectsMap_;
+
+  for (int i = 0; i < attached_objects.size(); ++i){
+    AttachedCollisionObjectsMap_.insert({attached_objects[i].object.id, attached_objects[i]});
+  }
+  return AttachedCollisionObjectsMap_;
+}
+
 void akit_pick_place::processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
   //stores feedback
   if(feedback->MOUSE_DOWN){
     interactive_pose = feedback->pose;
     interactive_name = feedback->marker_name;
-    //    ROS_INFO_STREAM("object " << interactive_name << " is at x: "
-    //                              << interactive_pose.position.x << " y: "
-    //                              << interactive_pose.position.y << " z: "
-    //                              << interactive_pose.position.z);
   }
 }
 
@@ -1425,14 +1451,15 @@ void akit_pick_place::addInteractiveMarker(geometry_msgs::Pose marker_pose,
   i_marker.color.g = 0.5;
   i_marker.color.b = 0.5;
   i_marker.color.a = 1.0;
+  double tolerance = 0.01;
 
   if (shape.type == shape_msgs::SolidPrimitive::BOX){ //fix for cuboids
     i_marker.type = visualization_msgs::Marker::CUBE;
-    i_marker.scale.x = i_marker.scale.y = i_marker.scale.z = shape.dimensions[0] + 0.01; //cannot be same size as collision object, won't return feedback
+    i_marker.scale.x = i_marker.scale.y = i_marker.scale.z = shape.dimensions[0] + tolerance; //cannot be same size as collision object, won't return feedback
   } else if (shape.type == shape_msgs::SolidPrimitive::CYLINDER){
     i_marker.type = visualization_msgs::Marker::CYLINDER;
-    i_marker.scale.x = i_marker.scale.y = (2 * shape.dimensions[1]) + 0.01;
-    i_marker.scale.z = shape.dimensions[0] + 0.01;
+    i_marker.scale.x = i_marker.scale.y = (2 * shape.dimensions[1]) + tolerance;
+    i_marker.scale.z = shape.dimensions[0] + tolerance;
   }
 
   // add the control to the interactive marker
@@ -1452,7 +1479,7 @@ void akit_pick_place::addInteractiveMarkers(){ //server
   ros::Rate rate(0.75); //updates planning scene --> interactive marker position changes after pick
   while(ros::ok())
   {
-    collision_objects_map = planningSceneInterface.getObjects(); //return all collision objects in planning scene
+    collision_objects_map = this->getSceneCollisionObjects(); //return all collision objects in planning scene
     CollisionObjectsMap::iterator it;
     for (it = collision_objects_map.begin(); it != collision_objects_map.end(); ++it){
       if (it->first == "ground")
@@ -1471,7 +1498,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
    */
 
   marker_sub = nh.subscribe("/akit_pick_place/feedback", 10, processFeedback);
-  collision_objects_map = planningSceneInterface.getObjects(); //return all collision objects in planning scene
+  collision_objects_map = this->getSceneCollisionObjects(); //return all collision objects in planning scene
   CollisionObjectsMap::iterator it;
   AttachedCollisionObjectsMap::iterator a_it;
   int count = 0;
@@ -1509,7 +1536,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
       }
     }
     //placing of attached object
-    attached_collision_objects_map = planningSceneInterface.getAttachedObjects();
+    attached_collision_objects_map = this->getAttachedCollisionObjects();
     for(a_it = attached_collision_objects_map.begin();a_it != attached_collision_objects_map.end(); ++a_it){
       if (a_it->second.object.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
         this->generateGrasps(place_positions[count],a_it->second.object.primitives[0].dimensions[0], a_it->second.object.primitives[0].dimensions[1]);

@@ -437,6 +437,8 @@ public:
    * @return the object as moveit_msgs::CollisionObject message
    */
   moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name,  double block_size_x, double block_size_y, double block_size_z);
+  CollisionObjectsMap getSceneCollisionObjects();
+  AttachedCollisionObjectsMap getAttachedCollisionObjects();
 };
 
 #endif // AKIT_PICK_PLACE_H
