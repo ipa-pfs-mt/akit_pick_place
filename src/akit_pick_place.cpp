@@ -46,7 +46,7 @@ akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_gr
 
 akit_pick_place::akit_pick_place(){
   PLANNING_GROUP = "e1_stationary";
-  WORLD_FRAME = "odom_combined";
+  WORLD_FRAME = "world";
   EEF_GROUP = "gripper";
   BASE_LINK = "chassis";
   EEF_PARENT_LINK = "quickcoupler";
@@ -57,7 +57,7 @@ akit_pick_place::akit_pick_place(){
   GRIPPER_SIDE_LENGTH = 0.20;
   side_grasps = false;
   FromGraspGenerator = true;
-  waypoints = std::vector<geometry_msgs::Pose>(1);
+  waypoints = std::vector<geometry_msgs::Pose>(1); //not needed
   /*akitGroup = new moveit::planning_interface::MoveGroupInterface("e1_complete");
   akitJointModelGroup = akitGroup->getCurrentState()->getJointModelGroup("e1_complete");
   gripperGroup = new moveit::planning_interface::MoveGroupInterface("gripper");
@@ -80,7 +80,7 @@ akit_pick_place::akit_pick_place(){
   e1_go_to_goal_client = nh.serviceClient<e1_motion_sequence::GoToGoal>("/e1_motion_sequence/go_to_goal");
   e1_compute_fk_client = nh.serviceClient<moveit_msgs::GetPositionFK>("/e1_moveit_interface/compute_fk");
   e1_cartesian_path_client = nh.serviceClient<moveit_msgs::GetCartesianPath>("/e1/moveit_ik/compute_cartesian_path");
-  e1_trajectory_publisher = nh.advertise<moveit_msgs::MoveGroupActionResult>("/e1/moveit_ik/move_group/result", 1000);
+  e1_trajectory_publisher = nh.advertise<moveit_msgs::MoveGroupActionResult>("/e1/moveit_ik/move_group/result", 10);
   e1_execute_traj_client = nh.serviceClient<moveit_msgs::ExecuteKnownTrajectory>("/e1_moveit_interface/execute_kinematic_path");
   e1_joint_states_subscriber = nh.subscribe("/e1_interface/joint_states", 1000, &akit_pick_place::jointStatesCallback, this);
 }
@@ -617,7 +617,7 @@ bool akit_pick_place::openGripper(){
   gripper_command.stick_valve_opening = 0;
   gripper_command.bucket_valve_opening = 0;
   gripper_command.cabin_rotation_valve_opening = 0;
-  gripper_command.auxiliary_hydraulic_valve_opening = -400;  //open gripper to near max value (fixed)
+  gripper_command.auxiliary_hydraulic_valve_opening = -500;  //open gripper to near max value (fixed)
   gripper_command.third_control_circuit_valve_opening = 0;
   gripper_command.auxiliary_hydraulic_switch_valve = false;
 
@@ -626,6 +626,7 @@ bool akit_pick_place::openGripper(){
   while(ros::Time::now() - start_time < timeout) {
     e1_gripper_pub.publish(gripper_command);
   }
+  ROS_INFO_STREAM("Opened Gripper successfully");
   return true;
 }
 
@@ -769,6 +770,14 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 
    sleep(0.5);
 
+//   ROS_INFO_STREAM("cartesian path solution points");
+//   for (int i = 0; i < 5; ++i){
+//       ROS_INFO_STREAM(cartesian_path_msg.response.solution.joint_trajectory.joint_names[i]);
+//          for (int j = 0; j < 5; ++j){
+//                  ROS_INFO_STREAM(cartesian_path_msg.response.solution.joint_trajectory.points[i].positions[j]);
+//     }
+//   }
+
    if ((cartesian_path_msg.response.fraction * 100) >= 50.0){
       moveit_msgs::MoveGroupActionResult traj_msg;
 
@@ -782,6 +791,13 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 
       //add current joint states
       traj_msg.result.trajectory_start = cartesian_path_msg.request.start_state;
+
+//      ROS_INFO_STREAM("joint states trajectory start");
+//      for (int i = 0; i < traj_msg.result.trajectory_start.joint_state.name.size(); i++){
+//        ROS_INFO_STREAM(traj_msg.result.trajectory_start.joint_state.name[i]);
+//        ROS_INFO_STREAM(traj_msg.result.trajectory_start.joint_state.position[i]);
+//      }
+
       e1_trajectory_publisher.publish(traj_msg);
 
       //execute trajectory service parameters left empty
@@ -790,7 +806,8 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 
 
       if (execute_traj_srv.response.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS){
-        ROS_INFO_STREAM("Successfully cartesian trajectory executed");
+        ROS_INFO_STREAM("Successfully executed cartesian trajectory");
+        return true;
       } else {
         ROS_ERROR_STREAM("failed to execute cartesian trajectorty = " << execute_traj_srv.response.error_code.val);
         return false;
@@ -930,6 +947,7 @@ bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std
     } else {
 
       ROS_INFO_STREAM("Execution is successfull");
+      return true;
       break;
     }
 }
@@ -1139,11 +1157,7 @@ bool akit_pick_place::detachCollisionObject(moveit_msgs::CollisionObject collisi
 bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   ROS_INFO_STREAM("---------- Starting Pick Routine ----------");
 
-  //update start state to current state
-  akitState = akitGroup->getCurrentState();
-  akitGroup->setStartState(*akitState);
-
-  //move from home position to pre-grasp position
+   //move from home position to pre-grasp position
   if(FromGraspGenerator){
 
     //loop through all grasp poses
@@ -1166,10 +1180,6 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     }
   }
 
-  //this->writeOutputPlanningTime("planning_time_LBKPIECE_simple_experiment_pick.txt");
-
-  //this->writeOutputTrajectoryLength("trajectory_length_LBKPIECE_simple_experiment_pick.txt");
-
   //clear grasp_pose_vector
   grasp_pose_vector.clear();
 
@@ -1180,22 +1190,25 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     exit(1);
   }
 
-  if (!side_grasps){   //rotating gripper to adjust with different orientations (only works with top grasping)
+  //temporary until joint measurements for gripper are implemented from iosb
+  visual_tools->prompt("please rotate gripper then press next");
+
+  /*if (!side_grasps){   //rotating gripper to adjust with different orientations (only works with top grasping)
     if (!this->rotateGripper(object_)){
       ROS_ERROR("Failed to rotate Gripper");
       return false;
       exit(1);
     }
-  }
+  }*/
 
   //cartesian motion downwards
-  /*if (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
+  if (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
     ROS_ERROR("Failed to execute downwards cartesian motion");
     return false;
     exit(1);
-  }*/
+  }
 
-  int count = 0.0;
+  /*int count = 0.0;
   while (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
     this->rotateGripper(M_PI/6);
     count++;
@@ -1204,17 +1217,20 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
       return false;
       exit(1);
     }
-  }
+  }*/
 
   //add allowed collision matrix
   this->allowObjectCollision(object_.id);
 
+  //temporary until joint measurements for gripper are implemented from iosb
+  visual_tools->prompt("please close gripper then press next");
+
   //closing gripper
-  if (!this->closeGripper(object_)){
+  /*if (!this->closeGripper(object_)){
     ROS_ERROR("Failed to close Gripper");
     return false;
     exit(1);
-  }
+  }*/
 
   if (!this->attachCollisionObject(object_)){
     ROS_ERROR("Failed to attach collision object ");
@@ -1239,10 +1255,6 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
 bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   ROS_INFO_STREAM("---------- Starting Place Routine ----------");
 
-  //update start state to current state
-  akitState = akitGroup->getCurrentState();
-  akitGroup->setStartState(*akitState);
-
   //moving from post-grasp position to pre-place position
   if(FromGraspGenerator){
 
@@ -1266,10 +1278,6 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
     }
   }
 
-  //this->writeOutputPlanningTime("planning_time_LBKPIECE_simple_experiment_place.txt");
-
-  //this->writeOutputTrajectoryLength("trajectory_length_LBKPIECE_simple_experiment_place.txt");
-
   //clear grasp pose vector
   grasp_pose_vector.clear();
 
@@ -1280,9 +1288,6 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
     exit(1);
   }
 
-  //detach object from gripper
-  //bool isdetached = gripperGroup->detachObject(object_.id);
-
   if (!this->detachCollisionObject(object_)){
     ROS_ERROR("Failed to detach collision object ");
     return false;
@@ -1292,12 +1297,15 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   //give time for planning scene to process
   ros::Duration(1.0).sleep();
 
-  //ning gripper
+  //opening gripper
   if(!this->openGripper()){
     ROS_ERROR("Failed to open Gripper");
     return false;
     exit(1);
   }
+
+  //temporary
+  visual_tools->prompt("when the gripper is completely opened press next");
 
   //cartesian motion upwards
   if(!this->executeAxisCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
@@ -1314,20 +1322,6 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   return true;
 }
 
-bool akit_pick_place::pick_place(moveit_msgs::CollisionObject object_){ //finalize after testing --> works only with blender (integrate with grasp generator)
-  //calling pick method
-  if(!this->pick(object_)){
-    ROS_ERROR("Failed to pick");
-    return false;
-    exit(1);
-  }
-  //calling place method
-  if(!this->place(object_)){
-    ROS_ERROR("Failed to place");
-    return false;
-    exit(1);
-  }
-}
 //-----------------------------world interaction methods------------------------------
 
 moveit_msgs::CollisionObject akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,

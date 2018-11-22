@@ -163,9 +163,6 @@ include_directories(
 add_executable(pick_place_test scripts/pick_place_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(pick_place_test ${catkin_LIBRARIES})
 
-add_executable(pick_place_test_2 scripts/pick_place_test_2.cpp src/akit_pick_place.cpp)
-target_link_libraries(pick_place_test_2 ${catkin_LIBRARIES})
-
 add_executable(random_pick_place_arrange_test scripts/random_pick_place_arrange_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(random_pick_place_arrange_test ${catkin_LIBRARIES})
 

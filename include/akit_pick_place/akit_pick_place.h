@@ -392,13 +392,7 @@ public:
    * @return true if procedure succeeds
    */
   bool place(moveit_msgs::CollisionObject object_);
-  /**
-   * @brief pick_place pick is the place routine
-   * @param object_ a moveit_msgs::CollisionObject message of the object to be picked and placed
-   * @return true if procedure succeeds
-   */
-  bool pick_place(moveit_msgs::CollisionObject object_);
-  /**
+   /**
    * @brief interactive_pick_place is the  pick and place routine using interactive markers
    * @param place_positions vector containing geometry_msgs::Pose messages for place locations
    * @return true if procedure succeeds

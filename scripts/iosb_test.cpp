@@ -36,9 +36,15 @@ int main(int argc, char **argv){
 
   std::string position = "pregrasp";
 
-  akit.addCollisionCylinder(pose,"cylinder", 0.5,0.2);
+  moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose,"cylinder", 0.5,0.2);
+  akit.generateGrasps(pose, 0.5,0.2);
 
-  sleep(1.0);
+  if(!akit.pick(cylinder)){
+    ROS_ERROR("Failed to pick");
+    exit(1);
+  }
+
+  /*sleep(1.0);
 
   akit.allowObjectCollision("cylinder");
 
@@ -46,13 +52,26 @@ int main(int argc, char **argv){
 
   akit.planAndExecute(test_poses, position);
 
-  /*sleep(1.0);
+  sleep(1.0);
 
-  akit.openGripper();*/
+  akit.executeAxisCartesianMotion(false, 0.25, 'z');
 
   sleep(1.0);
 
-  akit.executeAxisCartesianMotion(false, 0.35, 'z');
+  akit.openGripper();*/
 
+  /*sleep(10.0);
+
+  akit.executeAxisCartesianMotion(true, 0.35 , 'z');*/
 
 }
+
+
+
+
+
+
+
+
+
+
