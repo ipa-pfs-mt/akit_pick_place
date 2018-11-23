@@ -246,16 +246,16 @@ public:
    */
   bool executeAxisCartesianMotion(bool direction, double cartesian_distance, char axis);
   /**
-   * @brief planAndExecute motion planning and execution
+   * @brief planAndExecute motion planning and execution with cartesian goals
    * @param poses geometry_msgs::Pose vector of poses to be planned and executed
    * @param pose string containing name of pose
    * @return true if motion planning succeeds
    */
   bool planAndExecuteCartesianGoals(std::vector<geometry_msgs::Pose> poses, std::string pose);
   /**
-   * @brief planAndExecuteJointGoals
-   * @param joint_states
-   * @param add_to_current_joint_states
+   * @brief planAndExecuteJointGoals motion planning and execution with joint state goal
+   * @param joint_states joint state values
+   * @param add_to_current_joint_states true if joint states vector is added to current, false if not
    * @return
    */
   bool planAndExecuteJointGoals(std::vector<double> joint_states, bool add_to_current_joint_states = true);
@@ -268,7 +268,7 @@ public:
    * @brief allowToolCollision allows collisoin between tool and quickcoupler
    * @param tool_id string containing tool frame id
    */
-  void allowToolCollision(std::string tool_id);
+  bool allowToolCollision(std::string tool_id);
   /**
    * @brief resetAllowedCollisionMatrix resets allowed collision matrix after place routine is finished
    * @param object_id object to be removed from acm

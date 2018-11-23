@@ -8,84 +8,84 @@ akit_pick_place::akit_pick_place(){
   //check all parameters are loaded
 
   if (!nh.hasParam("/planning_group")){
-    ROS_ERROR_STREAM("planning_group parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("planning_group parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/planning_group", PLANNING_GROUP);
 
   if (!nh.hasParam("/world_frame")){
-    ROS_ERROR_STREAM("world_frame parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("world_frame parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/world_frame", WORLD_FRAME);
 
   if (!nh.hasParam("/eef_group")){
-    ROS_ERROR_STREAM("eef_group parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("eef_group parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/eef_group", EEF_GROUP);
 
   if (!nh.hasParam("/base_link")){
-    ROS_ERROR_STREAM("base_link parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("base_link parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/base_link", BASE_LINK);
 
   if (!nh.hasParam("/eef_parent_link")){
-    ROS_ERROR_STREAM("eef_parent_link parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("eef_parent_link parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/eef_parent_link", EEF_PARENT_LINK);
 
   if (!nh.hasParam("/gripper_frame")){
-    ROS_ERROR_STREAM("gripper_frame parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("gripper_frame parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/gripper_frame", GRIPPER_FRAME);
 
   if (!nh.hasParam("/bucket_frame")){
-    ROS_ERROR_STREAM("bucket_frame parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("bucket_frame parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/bucket_frame", BUCKET_FRAME);
 
   if (!nh.hasParam("/gripper_length")){
-    ROS_ERROR_STREAM("gripper_length parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("gripper_length parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/gripper_length", GRIPPER_LENGTH);
 
   if (!nh.hasParam("/gripper_jaw_length")){
-    ROS_ERROR_STREAM("gripper_jaw_length parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("gripper_jaw_length parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/gripper_jaw_length", GRIPPER_JAW_LENGTH);
 
   if (!nh.hasParam("/gripper_side_length")){
-    ROS_ERROR_STREAM("gripper_side_length parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("gripper_side_length parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/gripper_side_length", GRIPPER_SIDE_LENGTH);
 
   if (!nh.hasParam("/side_grasps")){
-    ROS_ERROR_STREAM("side_grasps parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("side_grasps parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
   nh.getParam("/side_grasps", side_grasps);
 
   if (!nh.hasParam("/from_grasp_generator")){
-    ROS_ERROR_STREAM("from_grasp_generator parameter not loaded, did you load initialization data yaml file ?");
+    ROS_ERROR("from_grasp_generator parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
   }
 
@@ -1002,25 +1002,40 @@ bool akit_pick_place::resetAllowedCollisionMatrix(std::string object_id){
 }
 
 //allow collision during tool exchange
-void akit_pick_place::allowToolCollision(std::string tool_id){
-  acm = acm = planningScenePtr->getAllowedCollisionMatrix();
+bool akit_pick_place::allowToolCollision(std::string tool_id){
+
+  acm = planningScenePtr->getAllowedCollisionMatrix();
   std::transform(tool_id.begin(), tool_id.end(), tool_id.begin(), ::tolower);
 
-  if (tool_id == "bucket_raedlinger")
-  {
-    acm.setEntry(EEF_PARENT_LINK,BUCKET_FRAME, true);
-    acm.setEntry("stick",BUCKET_FRAME,true);
-    acm.setEntry("bucket_lever_2",BUCKET_FRAME,true);
+  if (tool_id != GRIPPER_FRAME && tool_id != BUCKET_FRAME){
+    ROS_ERROR_STREAM("Unknown tool, please write correct tool name");
+    return false;
+    exit(1);
   }
-  else if (tool_id == "gripper_rotator")
-  {
-    acm.setEntry(EEF_PARENT_LINK,GRIPPER_FRAME, true);
-    acm.setEntry("stick",GRIPPER_FRAME,true);
+
+  std::vector<std::string> group_links;
+
+  if (!nh.hasParam(PLANNING_GROUP)){
+    ROS_ERROR_STREAM(PLANNING_GROUP + " parameter not loaded, did you load planning groups yaml file ?");
+    return false;
+    exit(1);
   }
+
+  nh.getParam(PLANNING_GROUP, group_links);
+
+  for (int i= 0; i < group_links.size(); ++i){
+    acm.setEntry(group_links[i], tool_id, true);
+  }
+
   acm.getMessage(planning_scene_msg_.allowed_collision_matrix);
   planning_scene_msg_.is_diff = true;
   planning_scene_srv.request.scene = planning_scene_msg_;
-  planning_scene_diff_client.call(planning_scene_srv);
+
+  if (planning_scene_diff_client.call(planning_scene_srv)){
+    return true;
+  } else {
+    return false;
+  }
 }
 
 
@@ -1532,7 +1547,7 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
   std::transform(tool_frame_id.begin(), tool_frame_id.end(), tool_frame_id.begin(), ::tolower);
 
   if (tool_frame_id != GRIPPER_FRAME && tool_frame_id != BUCKET_FRAME){
-    ROS_ERROR_STREAM("Unknown tool, please write correct tool name");
+    ROS_ERROR("Unknown tool, please write correct tool name");
     return false;
     exit(1);
   }
@@ -1541,7 +1556,7 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
   double quickcoupler_z, quickcoupler_x, distance_above_gripper;
 
   if (!nh.hasParam("quickcoupler_z")){
-    ROS_ERROR_STREAM("tool exchange parameter (quickcoupler_z) not loaded, did you load initialization yaml file ?");
+    ROS_ERROR("tool exchange parameter (quickcoupler_z) not loaded, did you load initialization yaml file ?");
     return false;
     exit(1);
   }
@@ -1549,7 +1564,7 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
   nh.getParam("quickcoupler_z", quickcoupler_z);
 
   if (!nh.hasParam("quickcoupler_x")){
-    ROS_ERROR_STREAM("tool exchange parameter (quickcoupler_x) not loaded, did you load initialization yaml file ?");
+    ROS_ERROR("tool exchange parameter (quickcoupler_x) not loaded, did you load initialization yaml file ?");
     return false;
     exit(1);
   }
@@ -1557,7 +1572,7 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
   nh.getParam("quickcoupler_x", quickcoupler_x);
 
   if (!nh.hasParam("distance_above_gripper")){
-    ROS_ERROR_STREAM("tool exchange parameter (distance_above_gripper) not loaded, did you load initialization yaml file ?");
+    ROS_ERROR("tool exchange parameter (distance_above_gripper) not loaded, did you load initialization yaml file ?");
     return false;
     exit(1);
   }
@@ -1578,7 +1593,11 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
   initial_pose_tool_frame.pose.orientation.w = q[3];
 
   //allow collision between tool group and quickcoupler --> eef parent link
-  this->allowToolCollision(tool_frame_id);
+  if (!this->allowToolCollision(tool_frame_id)){
+    ROS_ERROR("tool not removed from collision. please load planning group parameters");
+    return false;
+    exit(1);
+  }
 
   //transform pose from gripper/bucket frame to base link frame
   transform_listener.waitForTransform(BASE_LINK,tool_frame_id, ros::Time::now(), ros::Duration(0.1)); //avoid time difference exception
@@ -1632,7 +1651,7 @@ bool akit_pick_place::detachTool(std::string tool_frame_id){
   std::transform(tool_frame_id.begin(), tool_frame_id.end(), tool_frame_id.begin(), ::tolower);
 
   if (tool_frame_id != GRIPPER_FRAME && tool_frame_id != BUCKET_FRAME){
-    ROS_ERROR_STREAM("Unknown tool, please write correct tool name");
+    ROS_ERROR("Unknown tool, please write correct tool name");
     return false;
     exit(1);
   }
@@ -1640,7 +1659,7 @@ bool akit_pick_place::detachTool(std::string tool_frame_id){
   double quickcoupler_x, distance_above_gripper;
 
   if (!nh.hasParam("quickcoupler_x")){
-    ROS_ERROR_STREAM("tool exchange parameter (quickcoupler_x) not loaded, did you load initialization yaml file ?");
+    ROS_ERROR("tool exchange parameter (quickcoupler_x) not loaded, did you load initialization yaml file ?");
     return false;
     exit(1);
   }
@@ -1648,7 +1667,7 @@ bool akit_pick_place::detachTool(std::string tool_frame_id){
   nh.getParam("quickcoupler_x", quickcoupler_x);
 
   if (!nh.hasParam("distance_above_gripper")){
-    ROS_ERROR_STREAM("tool exchange parameter (distance_above_gripper) not loaded, did you load initialization yaml file ?");
+    ROS_ERROR("tool exchange parameter (distance_above_gripper) not loaded, did you load initialization yaml file ?");
     return false;
     exit(1);
   }
@@ -1656,7 +1675,11 @@ bool akit_pick_place::detachTool(std::string tool_frame_id){
   nh.getParam("distance_above_gripper", distance_above_gripper);
 
   //allow collision between tool group and quickcoupler --> eef parent link
-  this->allowToolCollision(tool_frame_id);
+  if (!this->allowToolCollision(tool_frame_id)){
+    ROS_ERROR("tool not removed from collision. please load planning group parameters");
+    return false;
+    exit(1);
+  }
 
   //de-activate lock --> no control in rviz
 
