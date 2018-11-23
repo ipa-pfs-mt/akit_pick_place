@@ -1,0 +1,28 @@
+
+planning_group: 'e1_stationary'
+
+world_frame: 'world'
+
+eef_group: 'gripper'
+
+base_link: 'chassis'
+
+eef_parent_link: 'quickcoupler'
+
+gripper_frame: 'gripper_rotator'
+
+bucket_frame: 'bucket_raedlinger'
+
+gripper_length: 1.05
+
+gripper_jaw_length: 0.3
+
+gripper_side_length: 0.2
+
+side_grasps: false
+
+from_grasp_generator: true
+
+
+
+
