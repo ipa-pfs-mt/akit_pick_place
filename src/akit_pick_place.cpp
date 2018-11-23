@@ -1,155 +1,144 @@
 #include <akit_pick_place/akit_pick_place.h>
 
-
 geometry_msgs::Pose akit_pick_place::interactive_pose;
 std::string akit_pick_place::interactive_name;
 
-akit_pick_place::akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
-                                 std::string base_link_, std::string eef_parent_link_,std::string gripper_frame_,std::string bucket_frame_,
-                                 double gripper_length_, double gripper_jaw_length_, double gripper_side_length_,
-                                 bool set_from_grasp_generator_){
-  PLANNING_GROUP = planning_group_;
-  EEF_GROUP = eef_group_;
-  WORLD_FRAME = world_frame_;
-  BASE_LINK = base_link_;
-  GRIPPER_FRAME = gripper_frame_;
-  BUCKET_FRAME = bucket_frame_;
-  GRIPPER_LENGTH = gripper_length_;
-  GRIPPER_JAW_LENGTH = gripper_jaw_length_;
-  GRIPPER_SIDE_LENGTH = gripper_side_length_;
-  EEF_PARENT_LINK = eef_parent_link_;
-  FromGraspGenerator = set_from_grasp_generator_;
-  side_grasps = false;
-  waypoints = std::vector<geometry_msgs::Pose>(1);
-  /*akitGroup = new moveit::planning_interface::MoveGroupInterface(planning_group_);
-  gripperGroup = new moveit::planning_interface::MoveGroupInterface(eef_group_);
-  akitJointModelGroup = akitGroup->getCurrentState()->getJointModelGroup(planning_group_);
-  gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup(eef_group_);
-  akitState = akitGroup->getCurrentState();
-  gripperState = gripperGroup->getCurrentState();
-  gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
-  akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
-  robotModelLoader.reset(new robot_model_loader::RobotModelLoader("robot_description"));
-  robotModelPtr = robotModelLoader->getModel();
-  planningScenePtr.reset(new planning_scene::PlanningScene(robotModelPtr));
-  server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
-  visual_tools.reset(new moveit_visual_tools::MoveItVisualTools(base_link_, "visualization_marker"));*/
-  //marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
-  e1_gripper_pub = nh.advertise<e1_interface::E1Command>("/e1/e1_command", 10);
-  planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
-  planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
-  get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("/e1/moveit_ik/get_planning_scene");
-  e1_set_goal_client = nh.serviceClient<e1_motion_sequence::SetGoal>("/e1_motion_sequence/add_goal");
-  e1_go_to_goal_client = nh.serviceClient<e1_motion_sequence::GoToGoal>("/e1_motion_sequence/go_to_goal");
-
-}
-
 akit_pick_place::akit_pick_place(){
-  PLANNING_GROUP = "e1_stationary";
-  WORLD_FRAME = "world";
-  EEF_GROUP = "gripper";
-  BASE_LINK = "chassis";
-  EEF_PARENT_LINK = "quickcoupler";
-  GRIPPER_FRAME = "gripper_rotator";
-  BUCKET_FRAME = "bucket_raedlinger";
-  GRIPPER_LENGTH = 1.05;
-  GRIPPER_JAW_LENGTH = 0.30;
-  GRIPPER_SIDE_LENGTH = 0.20;
-  side_grasps = false;
-  FromGraspGenerator = true;
-  waypoints = std::vector<geometry_msgs::Pose>(1); //not needed
-  /*akitGroup = new moveit::planning_interface::MoveGroupInterface("e1_complete");
-  akitJointModelGroup = akitGroup->getCurrentState()->getJointModelGroup("e1_complete");
-  gripperGroup = new moveit::planning_interface::MoveGroupInterface("gripper");
-  gripperJointModelGroup = gripperGroup->getCurrentState()->getJointModelGroup("gripper");
-  akitState = akitGroup->getCurrentState();
-  gripperState = gripperGroup->getCurrentState();
-  gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
-  akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);*/
+
+  //check all parameters are loaded
+
+  if (!nh.hasParam("/planning_group")){
+    ROS_ERROR_STREAM("planning_group parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/planning_group", PLANNING_GROUP);
+
+  if (!nh.hasParam("/world_frame")){
+    ROS_ERROR_STREAM("world_frame parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/world_frame", WORLD_FRAME);
+
+  if (!nh.hasParam("/eef_group")){
+    ROS_ERROR_STREAM("eef_group parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/eef_group", EEF_GROUP);
+
+  if (!nh.hasParam("/base_link")){
+    ROS_ERROR_STREAM("base_link parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/base_link", BASE_LINK);
+
+  if (!nh.hasParam("/eef_parent_link")){
+    ROS_ERROR_STREAM("eef_parent_link parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/eef_parent_link", EEF_PARENT_LINK);
+
+  if (!nh.hasParam("/gripper_frame")){
+    ROS_ERROR_STREAM("gripper_frame parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/gripper_frame", GRIPPER_FRAME);
+
+  if (!nh.hasParam("/bucket_frame")){
+    ROS_ERROR_STREAM("bucket_frame parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/bucket_frame", BUCKET_FRAME);
+
+  if (!nh.hasParam("/gripper_length")){
+    ROS_ERROR_STREAM("gripper_length parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/gripper_length", GRIPPER_LENGTH);
+
+  if (!nh.hasParam("/gripper_jaw_length")){
+    ROS_ERROR_STREAM("gripper_jaw_length parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/gripper_jaw_length", GRIPPER_JAW_LENGTH);
+
+  if (!nh.hasParam("/gripper_side_length")){
+    ROS_ERROR_STREAM("gripper_side_length parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/gripper_side_length", GRIPPER_SIDE_LENGTH);
+
+  if (!nh.hasParam("/side_grasps")){
+    ROS_ERROR_STREAM("side_grasps parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/side_grasps", side_grasps);
+
+  if (!nh.hasParam("/from_grasp_generator")){
+    ROS_ERROR_STREAM("from_grasp_generator parameter not loaded, did you load initialization data yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/from_grasp_generator", FromGraspGenerator);
+
+  waypoints = std::vector<geometry_msgs::Pose>(1); //not needed remove later
+
   robotModelLoader.reset(new robot_model_loader::RobotModelLoader("/e1/moveit_ik/robot_description"));
+
   robotModelPtr = robotModelLoader->getModel();
+
   planningScenePtr.reset(new planning_scene::PlanningScene(robotModelPtr));
+
   server.reset(new interactive_markers::InteractiveMarkerServer("akit_pick_place","",false));
+
   visual_tools.reset(new moveit_visual_tools::MoveItVisualTools("chassis", "visualization_marker"));
+
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
+
   e1_gripper_pub = nh.advertise<e1_interface::E1Command>("/e1/e1_command", 10);
-  planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
-  planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
-  get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("/e1/moveit_ik/get_planning_scene");
-  e1_set_goal_client = nh.serviceClient<e1_motion_sequence::SetGoal>("/e1_motion_sequence/add_goal");
-  e1_go_to_goal_client = nh.serviceClient<e1_motion_sequence::GoToGoal>("/e1_motion_sequence/go_to_goal");
-  e1_compute_fk_client = nh.serviceClient<moveit_msgs::GetPositionFK>("/e1_moveit_interface/compute_fk");
-  e1_cartesian_path_client = nh.serviceClient<moveit_msgs::GetCartesianPath>("/e1/moveit_ik/compute_cartesian_path");
+
   e1_trajectory_publisher = nh.advertise<moveit_msgs::MoveGroupActionResult>("/e1/moveit_ik/move_group/result", 10);
+
+  planning_scene_diff_client = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
+
+  planning_scene_diff_client_ = nh.serviceClient<moveit_msgs::ApplyPlanningScene>("/e1/moveit_ik/apply_planning_scene");
+
+  get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("/e1/moveit_ik/get_planning_scene");
+
+  e1_set_goal_client = nh.serviceClient<e1_motion_sequence::SetGoal>("/e1_motion_sequence/add_goal");
+
+  e1_go_to_goal_client = nh.serviceClient<e1_motion_sequence::GoToGoal>("/e1_motion_sequence/go_to_goal");
+
+  e1_compute_fk_client = nh.serviceClient<moveit_msgs::GetPositionFK>("/e1_moveit_interface/compute_fk");
+
+  e1_cartesian_path_client = nh.serviceClient<moveit_msgs::GetCartesianPath>("/e1/moveit_ik/compute_cartesian_path");
+
   e1_execute_traj_client = nh.serviceClient<moveit_msgs::ExecuteKnownTrajectory>("/e1_moveit_interface/execute_kinematic_path");
+
   e1_joint_states_subscriber = nh.subscribe("/e1_interface/joint_states", 1000, &akit_pick_place::jointStatesCallback, this);
 }
 
+//destructor
 akit_pick_place::~akit_pick_place(){
 }
-void akit_pick_place::setFromGraspGenerator(bool grasp_generator){
-  FromGraspGenerator = grasp_generator;
-}
-void akit_pick_place::setBaseLink(std::string base_link_){
-  BASE_LINK = base_link_;
-}
-void akit_pick_place::setWorldFrame(std::string world_frame_){
-  WORLD_FRAME = world_frame_;
-}
-void akit_pick_place::setGripperFrame(std::string gripper_frame_){
-  GRIPPER_FRAME = gripper_frame_;
-}
-void akit_pick_place::setDefaultPlanningGroup(){
-  PLANNING_GROUP = "e1_complete";
-}
-void akit_pick_place::setGripperGroup(std::string eef_group_){
-  EEF_GROUP = eef_group_;
-}
-void akit_pick_place::setPlanningGroup(std::string planning_group_){
-  PLANNING_GROUP = planning_group_;
-}
+
 void akit_pick_place::setPreGraspPose(geometry_msgs::Pose preGraspPose){
   pre_grasp_pose = preGraspPose;
 }
 void akit_pick_place::setPrePlacePose(geometry_msgs::Pose prePlacePose){
   pre_place_pose = prePlacePose;
 }
-void akit_pick_place::setGripperLength(double gripper_length_){
-  GRIPPER_LENGTH = gripper_length_;
-}
-void akit_pick_place::setGripperSideLength(double gripper_side_length_){
-  GRIPPER_SIDE_LENGTH = gripper_side_length_;
-}
-void akit_pick_place::setGripperJawLength(double gripper_jaw_length_){
-  GRIPPER_JAW_LENGTH = gripper_jaw_length_;
-}
-void akit_pick_place::setPlannerID(std::string planner_id_){
-  akitGroup->setPlannerId(planner_id_);
-}
-std::string akit_pick_place::getPlanningGroup(){
-  return PLANNING_GROUP;
-}
-std::string akit_pick_place::getGripperGroup(){
-  return EEF_GROUP;
-}
-std::string akit_pick_place::getBaseLink(){
-  return BASE_LINK;
-}
-std::string akit_pick_place::getWorldFrame(){
-  return WORLD_FRAME;
-}
-std::string akit_pick_place::getGripperFrame(){
-  return GRIPPER_FRAME;
-}
-double akit_pick_place::getGripperLength(){
-  return GRIPPER_LENGTH;
-}
-double akit_pick_place::getGripperSideLength(){
-  return GRIPPER_SIDE_LENGTH;
-}
-double akit_pick_place::getGripperJawLength(){
-  return GRIPPER_JAW_LENGTH;
-}
+
 void akit_pick_place::addOrientationConstraints(){ //remove after testing
   moveit_msgs::OrientationConstraint ocm;
   ocm.link_name = "quickcoupler";
@@ -214,6 +203,7 @@ void akit_pick_place::displayTrajectory(moveit::planning_interface::MoveGroupInt
 
 void akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double block_size_,bool sideGrasps, bool visualize){
 
+  geometry_msgs::Pose grasp_pose;
   geometry_msgs::PoseStamped box_in_chassis_frame,box_in_world_frame;
 
   box_in_world_frame.pose = block_pose_;
@@ -291,6 +281,8 @@ void akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
 
 void akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_, bool sideGrasps, bool visualize){
 
+  geometry_msgs::Pose grasp_pose;
+
   //calculate roll,pitch,yaw of the object relative to the world frame for test variable (top grasping)
   tf::Quaternion qq(cuboid_pose_.orientation.x, cuboid_pose_.orientation.y,cuboid_pose_.orientation.z, cuboid_pose_.orientation.w);
   tf::Matrix3x3 m(qq);
@@ -346,7 +338,6 @@ void akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
       grasp_pose.orientation.z = q[2];
       grasp_pose.orientation.w = q[3];
       grasp_pose_vector.push_back(grasp_pose);
-
     }
 
     if(visualize){
@@ -391,6 +382,8 @@ void akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
 }
 
 void akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_,bool sideGrasps, bool visualize){
+
+  geometry_msgs::Pose grasp_pose;
 
   //calculate roll,pitch,yaw of the object relative to the world frame for test variable (top grasping)
   tf::Quaternion qq(cylinder_pose_.orientation.x, cylinder_pose_.orientation.y,cylinder_pose_.orientation.z, cylinder_pose_.orientation.w);
@@ -448,7 +441,6 @@ void akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
       grasp_pose.orientation.z = q[2];
       grasp_pose.orientation.w = q[3];
       grasp_pose_vector.push_back(grasp_pose);
-
     }
 
     if(visualize){
@@ -680,7 +672,14 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
   //getPosition fk object
   moveit_msgs::GetPositionFK getPositionFK_msg;
   getPositionFK_msg.request.header.frame_id = BASE_LINK;
-  nh.getParam("/e1/moveit_ik/" + PLANNING_GROUP , getPositionFK_msg.request.fk_link_names);
+
+  if (!nh.hasParam(PLANNING_GROUP)){
+    ROS_ERROR_STREAM(PLANNING_GROUP + " parameter not loaded, did you load planning groups yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam(PLANNING_GROUP , getPositionFK_msg.request.fk_link_names);
 
   for (int i = 0; i < getPositionFK_msg.request.fk_link_names.size(); ++i){
     getPositionFK_msg.request.robot_state.joint_state.name.push_back(e1_joint_states.name[i]);
@@ -817,69 +816,6 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
      ROS_ERROR("Cannot execute cartesian motion, plan < 50 %%");
      return false;
    }
-
-/*
-  //update start state to current state
-  akitState = akitGroup->getCurrentState();
-  akitGroup->setStartState(*akitState);
-
-  //UP = true, DOWN = false
-  geometry_msgs::PoseStamped pose_in_base_frame, pose_in_quickcoupler_frame;
-
-  pose_in_base_frame.pose = akitGroup->getCurrentPose(EEF_PARENT_LINK).pose; //chassis frame
-  pose_in_base_frame.header.frame_id = BASE_LINK; //pose stamped
-
-  //transform from base link frame to quickcoupler frame, wait to avoid time difference exceptions
-  transform_listener.waitForTransform(EEF_PARENT_LINK, BASE_LINK, ros::Time::now(), ros::Duration(0.1));
-  transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_base_frame, BASE_LINK, pose_in_quickcoupler_frame);
-
-  if (!direction){        //downwards cartesian motion in quickcoupler frame
-    switch (axis){
-    case 'x':
-      pose_in_quickcoupler_frame.pose.position.x -= cartesian_distance;
-      break;
-    case 'y':
-      pose_in_quickcoupler_frame.pose.position.y -= cartesian_distance;
-      break;
-    case 'z':
-      pose_in_quickcoupler_frame.pose.position.z -= cartesian_distance;
-      break;
-    }
-  } else {                //upwards cartesian motion in quickcoupler frame
-    switch (axis){
-    case 'x':
-      pose_in_quickcoupler_frame.pose.position.x += cartesian_distance;
-      break;
-    case 'y':
-      pose_in_quickcoupler_frame.pose.position.y += cartesian_distance;
-      break;
-    case 'z':
-      pose_in_quickcoupler_frame.pose.position.z += cartesian_distance;
-      break;
-    }
-  }
-  //transform back to base frame, wait to avoid time difference exceptions
-  transform_listener.waitForTransform(BASE_LINK, EEF_PARENT_LINK, ros::Time::now(), ros::Duration(0.1));
-  transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_quickcoupler_frame, EEF_PARENT_LINK, pose_in_base_frame);
-
-  waypoints[0] = pose_in_base_frame.pose;
-  const double jump_threshold = 0.0;
-  const double eef_step = 0.01;
-  akitGroup->setMaxVelocityScalingFactor(0.1);
-
-  double fraction  = akitGroup->computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
-  ROS_INFO_STREAM("Visualizing Cartesian Motion plan:  " << (fraction * 100.0) <<"%% achieved");
-
-  if (fraction * 100 >= 50.0){
-    MotionPlan.trajectory_ = trajectory;
-    ROS_INFO_STREAM("---------- Executing Cartesian Motion ----------");
-    akitSuccess = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    ROS_INFO_STREAM("Cartesian Motion Plan: " << (akitSuccess ? "Executed" : "FAILED"));
-    return (akitSuccess ? true : false);
-  } else {
-    ROS_ERROR("Cannot execute cartesian motion, plan < 50 %%");
-    return false;
-  }*/
 }
 
 //executes first pose reached in input position vector
@@ -950,64 +886,22 @@ bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std
       return true;
       break;
     }
-}
-
-/*
-  //update start state to current state
-  akitState = akitGroup->getCurrentState();
-  akitGroup->setStartState(*akitState);
-
-  //int count = 0;
-  bool executed, found_ik;
-
-  for(int i = 0; i < poses.size(); ++i){
-
-    //convert positions from cartesian space to joint space to work with all planners
-    found_ik =  akitState->setFromIK(akitJointModelGroup, poses[i], 10,0.0);
-    if (found_ik)
-    {
-      ROS_INFO_STREAM("Found IK for " << pose << " position " << count << " successfully");
-      akitState->copyJointGroupPositions(akitJointModelGroup, akitJointPositions);
-      akitGroup->setJointValueTarget(akitJointPositions);
-    } else
-    {
-      ROS_ERROR_STREAM("Failed to find inverse kinematics for " << pose << " position " << count);
-      count++;
-      if (count == poses.size()){
-        ROS_ERROR_STREAM("Failed to plan to " << pose << " position");
-        return false;
-        exit(1);
-      }
-      continue;
-    }
-    akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-    ROS_INFO_STREAM("Motion Plan: " << (akitSuccess ? "Successful" : "FAILED"));
-    if(!akitSuccess){
-        ROS_ERROR_STREAM("Failed to plan to " << pose << " position");
-        return false;
-        exit(1);
-    } else {
-      this->displayTrajectory(MotionPlan,poses[i], pose + std::to_string(count), rviz_visual_tools::colors::ORANGE);
-      executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      ROS_INFO_STREAM("Executing Motion plan to: " << pose << " position: "<< (executed ? "Executed" : "FAILED"));
-      if (!executed){
-        ROS_ERROR_STREAM("Failed to execute motion plan to " << pose << " position");
-        return false;
-        exit(1);
-      } else {
-        return true;
-        break;
-      }
-    }
-  }*/
+  }
 }
 
 //allow gripper to touch object to be picked
-void akit_pick_place::allowObjectCollision(std::string object_id){
+bool akit_pick_place::allowObjectCollision(std::string object_id){
 
   acm = planningScenePtr->getAllowedCollisionMatrix();
   std::vector<std::string> gripper_links;
-  nh.getParam("/e1/moveit_ik/" + EEF_GROUP, gripper_links);
+
+  if (!nh.hasParam(EEF_GROUP)){
+    ROS_ERROR_STREAM(EEF_GROUP + " parameter not loaded, did you load planning groups yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam(EEF_GROUP, gripper_links);
 
   for (int i= 0; i < gripper_links.size(); ++i){
     acm.setEntry(gripper_links[i], object_id, true);
@@ -1016,15 +910,27 @@ void akit_pick_place::allowObjectCollision(std::string object_id){
   acm.getMessage(planning_scene_msg_.allowed_collision_matrix);
   planning_scene_msg_.is_diff = true;
   planning_scene_srv.request.scene = planning_scene_msg_;
-  planning_scene_diff_client.call(planning_scene_srv);
+
+  if (planning_scene_diff_client.call(planning_scene_srv)){
+    return true;
+  } else {
+    return false;
+  }
 }
 
 //reset acm to restore object as a collision object
-void akit_pick_place::resetAllowedCollisionMatrix(std::string object_id){
-  acm = planningScenePtr->getAllowedCollisionMatrix();
+bool akit_pick_place::resetAllowedCollisionMatrix(std::string object_id){
 
+  acm = planningScenePtr->getAllowedCollisionMatrix();
   std::vector<std::string> gripper_links;
-  nh.getParam("/e1/moveit_ik/" + EEF_GROUP, gripper_links);
+
+  if (!nh.hasParam(EEF_GROUP)){
+    ROS_ERROR_STREAM(EEF_GROUP + " parameter not loaded, did you load planning groups yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam(EEF_GROUP, gripper_links);
 
   for (int i= 0; i < gripper_links.size(); ++i){
     acm.removeEntry(gripper_links[i], object_id);
@@ -1033,7 +939,12 @@ void akit_pick_place::resetAllowedCollisionMatrix(std::string object_id){
   acm.getMessage(planning_scene_msg_.allowed_collision_matrix);
   planning_scene_msg_.is_diff = true;
   planning_scene_srv.request.scene = planning_scene_msg_;
-  planning_scene_diff_client.call(planning_scene_srv);
+
+  if (planning_scene_diff_client.call(planning_scene_srv)){
+    return true;
+  } else {
+    return false;
+  }
 }
 
 //allow collision during tool exchange
@@ -1220,7 +1131,11 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   }*/
 
   //add allowed collision matrix
-  this->allowObjectCollision(object_.id);
+  if (!this->allowObjectCollision(object_.id)){
+    ROS_ERROR("Failed to allow collision with object ");
+    return false;
+    exit(1);
+  }
 
   //temporary until joint measurements for gripper are implemented from iosb
   visual_tools->prompt("please close gripper then press next");
@@ -1317,8 +1232,11 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   visual_tools->deleteAllMarkers();
 
   //reset allowed collision matrix
-  this->resetAllowedCollisionMatrix(object_.id);
-
+  if (!this->resetAllowedCollisionMatrix(object_.id)){
+    ROS_ERROR("Failed to reset allowed collision matrix. object still not in collision");
+    return false;
+    exit(1);
+  }
   return true;
 }
 
@@ -1326,7 +1244,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
 
 moveit_msgs::CollisionObject akit_pick_place::addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
                                                                    std::string cylinder_name, double cylinder_height, double cylinder_radius){
-  //collision_objects_vector.clear(); //avoid re-addition of same object
+  //service objects
   moveit_msgs::ApplyPlanningScene planningSceneSrv_;
   moveit_msgs::PlanningScene planningSceneMsg_;
   moveit_msgs::CollisionObject cylinder;
@@ -1345,19 +1263,17 @@ moveit_msgs::CollisionObject akit_pick_place::addCollisionCylinder(geometry_msgs
   cylinder.operation = moveit_msgs::CollisionObject::ADD;
 
   //calling apply planning scene service
-  //collision_objects_vector.push_back(cylinder);
   planningSceneMsg_.world.collision_objects.push_back(cylinder);
   planningSceneMsg_.is_diff = true;
   planningSceneSrv_.request.scene = planningSceneMsg_;
   planning_scene_diff_client_.call(planningSceneSrv_);
 
-  //planningSceneInterface.addCollisionObjects(collision_objects_vector);
   return cylinder;
 }
 
 moveit_msgs::CollisionObject akit_pick_place::addCollisionBlock(geometry_msgs::Pose block_pose, std::string block_name, double block_size_x, double block_size_y, double block_size_z ){
 
-  //collision_objects_vector.clear(); //avoid re-addition of same object
+  //service objects
   moveit_msgs::ApplyPlanningScene planningSceneSrv_;
   moveit_msgs::PlanningScene planningSceneMsg_;
   moveit_msgs::CollisionObject block;
@@ -1376,13 +1292,11 @@ moveit_msgs::CollisionObject akit_pick_place::addCollisionBlock(geometry_msgs::P
   block.operation = moveit_msgs::CollisionObject::ADD;
 
   //calling apply planning scene service
-  //collision_objects_vector.push_back(block);
   planningSceneMsg_.world.collision_objects.push_back(block);
   planningSceneMsg_.is_diff = true;
   planningSceneSrv_.request.scene = planningSceneMsg_;
   planning_scene_diff_client_.call(planningSceneSrv_);
 
-  //planningSceneInterface.addCollisionObjects(collision_objects_vector);
   return block;
 }
 //instead of position constraints --> no motion in -z direction of world frame
@@ -1637,7 +1551,7 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
     exit(1);
   }
 
-  //activate lock --> no control in rviz
+  //activate lock --> no control in rviz --> use e1 command topic
 
   ROS_INFO_STREAM(tool_frame_id << " Attached Successfully");
 }
@@ -1658,7 +1572,7 @@ bool akit_pick_place::detachTool(std::string tool_frame_id){
   //allow collision between tool group and quickcoupler --> eef parent link
   this->allowToolCollision(tool_frame_id);
 
-  //de-activate lock --> no control in rviz
+  //de-activate lock --> no control in rviz --> use e1 command topic
 
   //update start state to current state
   akitState = akitGroup->getCurrentState();
