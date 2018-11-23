@@ -251,7 +251,14 @@ public:
    * @param pose string containing name of pose
    * @return true if motion planning succeeds
    */
-  bool planAndExecute(std::vector<geometry_msgs::Pose> poses, std::string pose, std::string planning_group = "e1_stationary");
+  bool planAndExecuteCartesianGoals(std::vector<geometry_msgs::Pose> poses, std::string pose);
+  /**
+   * @brief planAndExecuteJointGoals
+   * @param joint_states
+   * @param add_to_current_joint_states
+   * @return
+   */
+  bool planAndExecuteJointGoals(std::vector<double> joint_states, bool add_to_current_joint_states = true);
   /**
    * @brief allowObjectCollision allows collision of gripper links with object
    * @param object_id string containing objects id

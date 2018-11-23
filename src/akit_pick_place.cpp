@@ -819,7 +819,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 }
 
 //executes first pose reached in input position vector
-bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std::string pose, std::string planning_group){
+bool akit_pick_place::planAndExecuteCartesianGoals(std::vector<geometry_msgs::Pose> poses, std::string pose){
 
   int count = 0;
   e1_motion_sequence::SetGoal e1_set_goal_srv;
@@ -828,7 +828,7 @@ bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std
   e1_set_goal_client.waitForExistence();
 
   //planning service client unchanged variables
-  e1_set_goal_srv.request.planning_group = planning_group;
+  e1_set_goal_srv.request.planning_group = PLANNING_GROUP;
   e1_set_goal_srv.request.cartesian_goal_pose = true;
   e1_set_goal_srv.request.project_pose = false;
   e1_set_goal_srv.request.composite_path = false;
@@ -882,10 +882,64 @@ bool akit_pick_place::planAndExecute(std::vector<geometry_msgs::Pose> poses, std
 
     } else {
 
-      ROS_INFO_STREAM("Execution is successfull");
+      ROS_INFO_STREAM("Cartesian goal execution is successfull");
       return true;
       break;
     }
+  }
+}
+
+bool akit_pick_place::planAndExecuteJointGoals(std::vector<double> joint_states, bool add_to_current_joint_states){
+
+  //wait for joint states subscription
+  sleep(1.0);
+
+  e1_motion_sequence::SetGoal e1_set_goal_srv;
+  e1_motion_sequence::GoToGoal e1_go_to_srv;
+
+  e1_set_goal_client.waitForExistence();
+
+  //planning service client unchanged variables
+  e1_set_goal_srv.request.planning_group = PLANNING_GROUP;
+  e1_set_goal_srv.request.cartesian_goal_pose = false;
+  e1_set_goal_srv.request.project_pose = false;
+  e1_set_goal_srv.request.composite_path = false;
+  e1_set_goal_srv.request.action = 1;
+
+  if (add_to_current_joint_states){
+    for (int i = 0; i < joint_states.size(); ++i){
+      e1_set_goal_srv.request.goal_position.push_back(e1_joint_states.position[i] + joint_states[i]);
+    }
+  } else {
+    for (int i = 0; i < joint_states.size(); ++i){
+      e1_set_goal_srv.request.goal_position.push_back(joint_states[i]);
+    }
+  }
+
+  e1_set_goal_client.call(e1_set_goal_srv);
+
+  //check that setting the goal was successful
+  if (e1_set_goal_srv.response.success == true){
+    ROS_INFO_STREAM("Successfully added pose to list");
+  } else {
+    ROS_ERROR("Failed to add pose to list");
+    return false;
+    exit(1);
+  }
+
+  //fill GoToGoal srv
+  e1_go_to_srv.request.goal_number = e1_set_goal_srv.response.goal_number;
+
+  //call motion execution service
+  e1_go_to_goal_client.call(e1_go_to_srv);
+
+  if (e1_go_to_srv.response.error.val == moveit_msgs::MoveItErrorCodes::SUCCESS){
+      ROS_INFO_STREAM("joint goal execution is successfull");
+      return true;
+  } else {
+      ROS_ERROR_STREAM("motion planning in joint space failed, error code = " << e1_go_to_srv.response.error.val);
+      return false;
+      exit(1);
   }
 }
 
@@ -1072,7 +1126,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   if(FromGraspGenerator){
 
     //loop through all grasp poses
-    if(!this->planAndExecute(grasp_pose_vector, "pre_grasp")){
+    if(!this->planAndExecuteCartesianGoals(grasp_pose_vector, "pre_grasp")){
       ROS_ERROR("Failed to plan and execute");
       grasp_pose_vector.clear();
       return false;
@@ -1084,7 +1138,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     std::vector<geometry_msgs::Pose> positions;
     positions.push_back(pre_grasp_pose);
 
-    if(!this->planAndExecute(positions, "pre-grasp")){
+    if(!this->planAndExecuteCartesianGoals(positions, "pre-grasp")){
       ROS_ERROR("Failed to plan and execute");
       return false;
       exit(1);
@@ -1174,7 +1228,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   if(FromGraspGenerator){
 
     //loop through all grasp poses
-    if(!this->planAndExecute(grasp_pose_vector, "pre_place")){
+    if(!this->planAndExecuteCartesianGoals(grasp_pose_vector, "pre_place")){
       ROS_ERROR("Failed to plan and execute");
       grasp_pose_vector.clear();
       return false;
@@ -1186,7 +1240,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
     std::vector<geometry_msgs::Pose> positions;
     positions.push_back(pre_place_pose);
 
-    if(!this->planAndExecute(positions, "pre_place")){
+    if(!this->planAndExecuteCartesianGoals(positions, "pre_place")){
       ROS_ERROR("Failed to plan and execute");
       return false;
       exit(1);
@@ -1476,16 +1530,39 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
 bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool frame id and remove if conditions!
 
   std::transform(tool_frame_id.begin(), tool_frame_id.end(), tool_frame_id.begin(), ::tolower);
-  if (tool_frame_id != "gripper_rotator" && tool_frame_id != "bucket_raedlinger"){
+
+  if (tool_frame_id != GRIPPER_FRAME && tool_frame_id != BUCKET_FRAME){
     ROS_ERROR_STREAM("Unknown tool, please write correct tool name");
     return false;
     exit(1);
   }
 
-  //variables
-  double quickcoupler_z = 0.13; //distance between quickcoupler frame origin and lock in z-direction
-  double quickcoupler_x = 0.035; //distance between quickcoupler frame origin and edge in x-direction //
-  double distance_above_gripper = 0.25; //25 cm above gripper
+  //parameters
+  double quickcoupler_z, quickcoupler_x, distance_above_gripper;
+
+  if (!nh.hasParam("quickcoupler_z")){
+    ROS_ERROR_STREAM("tool exchange parameter (quickcoupler_z) not loaded, did you load initialization yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam("quickcoupler_z", quickcoupler_z);
+
+  if (!nh.hasParam("quickcoupler_x")){
+    ROS_ERROR_STREAM("tool exchange parameter (quickcoupler_x) not loaded, did you load initialization yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam("quickcoupler_x", quickcoupler_x);
+
+  if (!nh.hasParam("distance_above_gripper")){
+    ROS_ERROR_STREAM("tool exchange parameter (distance_above_gripper) not loaded, did you load initialization yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam("distance_above_gripper", distance_above_gripper);
 
   tf::Quaternion q = tf::createQuaternionFromRPY(0.0,-M_PI/2,0.0); //rotate 90deg around y-axis
   geometry_msgs::PoseStamped initial_pose_tool_frame, initial_pose_base_frame;
@@ -1515,17 +1592,28 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
   //motion planning
   std::vector<geometry_msgs::Pose> points;
   points.push_back(initial_pose_base_frame.pose);
-  if(!this->planAndExecute(points, "initial pose")){
+  if(!this->planAndExecuteCartesianGoals(points, "initial pose")){
     ROS_ERROR("Failed to plan and execute");
     return false;
     exit(1);
   }
 
-  //promt user
+  //promt user  //add position error detection
   visual_tools->prompt("proceed ? ");
 
   //execute cartesian motion in -x axis direction
-  this->executeAxisCartesianMotion(DOWN, distance_above_gripper + quickcoupler_x, 'x');
+  if (!this->executeAxisCartesianMotion(DOWN, distance_above_gripper + quickcoupler_x, 'x')){
+    ROS_ERROR("Failed to execute cartesian motion");
+    return false;
+    exit(1);
+  }
+
+  //rotation of the quickcoupler +90deg
+
+
+
+
+
 
   //get current joint state
   akitState = akitGroup->getCurrentState();

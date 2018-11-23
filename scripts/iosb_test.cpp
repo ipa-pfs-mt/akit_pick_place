@@ -37,12 +37,19 @@ int main(int argc, char **argv){
   std::string position = "pregrasp";
 
   moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose,"cylinder", 0.5,0.2);
-  akit.generateGrasps(pose, 0.5,0.2);
+
+  std::vector<double> joint_states(4,0);
+  joint_states.push_back(M_PI/2);
+
+  akit.planAndExecuteJointGoals(joint_states);
+
+
+  /*akit.generateGrasps(pose, 0.5,0.2);
 
   if(!akit.pick(cylinder)){
     ROS_ERROR("Failed to pick");
     exit(1);
-  }
+  }*/
 
   /*sleep(1.0);
 
