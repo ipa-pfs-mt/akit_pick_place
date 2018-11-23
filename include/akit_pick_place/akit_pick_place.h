@@ -171,7 +171,6 @@ public:
    */
   void setPrePlacePose(geometry_msgs::Pose prePlacePose);
 
-  void addOrientationConstraints();
   void writeOutputPlanningTime(std::string file_name);
   void writeOutputTrajectoryLength(std::string file_name);
   /**

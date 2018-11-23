@@ -139,24 +139,6 @@ void akit_pick_place::setPrePlacePose(geometry_msgs::Pose prePlacePose){
   pre_place_pose = prePlacePose;
 }
 
-void akit_pick_place::addOrientationConstraints(){ //remove after testing
-  moveit_msgs::OrientationConstraint ocm;
-  ocm.link_name = "quickcoupler";
-  ocm.header.frame_id = "chassis";
-  ocm.orientation.w = 1.0;
-  ocm.orientation.x = 0.0;
-  ocm.orientation.y = 0.0;
-  ocm.orientation.z = 0.0;
-  ocm.absolute_x_axis_tolerance = 1.0;
-  ocm.absolute_y_axis_tolerance = 1.0;
-  ocm.absolute_z_axis_tolerance = 1.7;
-  ocm.weight = 1.0;
-  //Now, set it as the path constraint for the group.
-  moveit_msgs::Constraints test_constraints;
-  test_constraints.orientation_constraints.push_back(ocm);
-  akitGroup->setPathConstraints(test_constraints);
-}
-
 void akit_pick_place::writeOutputPlanningTime(std::string file_name){
   ROS_INFO_STREAM("Planning time = " << MotionPlan.planning_time_);
 
