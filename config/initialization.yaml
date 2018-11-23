@@ -1,4 +1,8 @@
 
+# =====================================================
+
+#Initialization parameters
+
 planning_group: 'e1_stationary'
 
 world_frame: 'world'
@@ -22,6 +26,17 @@ gripper_side_length: 0.2
 side_grasps: false
 
 from_grasp_generator: true
+
+# =====================================================
+
+#tool exchange parameters
+
+quickcoupler_z: 0.13 #distance between quickcoupler frame origin and lock in z-direction (m)
+
+quickcoupler_x: 0.035 #distance between quickcoupler frame origin and edge in x-direction (m)
+
+distance_above_gripper: 0.25 #desired distance of the quickcoupler above the tool (m)
+
 
 
 
