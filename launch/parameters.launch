@@ -1,0 +1,7 @@
+<launch>
+
+  <rosparam command="load" file="$(find akit_pick_place)/config/planning_groups.yaml"/>
+
+  <rosparam command="load" file="$(find akit_pick_place)/config/initialization.yaml"/>
+
+</launch>
