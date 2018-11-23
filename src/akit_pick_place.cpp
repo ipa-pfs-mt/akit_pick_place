@@ -1608,38 +1608,20 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
     exit(1);
   }
 
-  //rotation of the quickcoupler +90deg
-
-
-
-
-
-
-  //get current joint state
-  akitState = akitGroup->getCurrentState();
-  akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
-
   //promt user
   visual_tools->prompt("proceed ? ");
 
-  //update start state to current state
-  akitState = akitGroup->getCurrentState();
-  akitGroup->setStartState(*akitState);
+  //rotation of the quickcoupler +90deg
+  std::vector<double> joint_states(4,0);
+  joint_states.push_back(M_PI/2);
 
-  //rotate quickcoupler +90deg
-  akitJointPositions[4] += M_PI/2;
-  akitGroup->setJointValueTarget(akitJointPositions);
-  akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  if (akitSuccess){
-    akitGroup->execute(MotionPlan);
-    ROS_INFO_STREAM("Rotation of quickcoupler --> success");
-  } else {
-    ROS_ERROR_STREAM("Failed to rotate quickcoupler");
+  if (!this->planAndExecuteJointGoals(joint_states)){
+    ROS_ERROR("Failed to execute joint motion --> quickcoupler rotation");
     return false;
     exit(1);
   }
 
-  //activate lock --> no control in rviz --> use e1 command topic
+  //activate lock --> no control in rviz
 
   ROS_INFO_STREAM(tool_frame_id << " Attached Successfully");
 }
@@ -1648,34 +1630,42 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
 bool akit_pick_place::detachTool(std::string tool_frame_id){
 
   std::transform(tool_frame_id.begin(), tool_frame_id.end(), tool_frame_id.begin(), ::tolower);
-  if (tool_frame_id != "gripper_rotator" && tool_frame_id != "bucket_raedlinger"){
+
+  if (tool_frame_id != GRIPPER_FRAME && tool_frame_id != BUCKET_FRAME){
     ROS_ERROR_STREAM("Unknown tool, please write correct tool name");
     return false;
     exit(1);
   }
   //variables
-  double quickcoupler_x = 0.035; //distance between quickcoupler frame origin and edge in x-direction
-  double distance_above_gripper = 0.25; //25 cm above gripper
+  double quickcoupler_x, distance_above_gripper;
+
+  if (!nh.hasParam("quickcoupler_x")){
+    ROS_ERROR_STREAM("tool exchange parameter (quickcoupler_x) not loaded, did you load initialization yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam("quickcoupler_x", quickcoupler_x);
+
+  if (!nh.hasParam("distance_above_gripper")){
+    ROS_ERROR_STREAM("tool exchange parameter (distance_above_gripper) not loaded, did you load initialization yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam("distance_above_gripper", distance_above_gripper);
 
   //allow collision between tool group and quickcoupler --> eef parent link
   this->allowToolCollision(tool_frame_id);
 
-  //de-activate lock --> no control in rviz --> use e1 command topic
+  //de-activate lock --> no control in rviz
 
-  //update start state to current state
-  akitState = akitGroup->getCurrentState();
-  akitGroup->setStartState(*akitState);
-  akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
+  //rotation of the quickcoupler +90deg
+  std::vector<double> joint_states(4,0);
+  joint_states.push_back(-M_PI/2);
 
-  //rotate quickcoupler -90deg
-  akitJointPositions[4] -= M_PI/2;
-  akitGroup->setJointValueTarget(akitJointPositions);
-  akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  if (akitSuccess){
-    akitGroup->execute(MotionPlan);
-    ROS_INFO_STREAM("Rotation of quickcoupler --> success");
-  } else {
-    ROS_ERROR_STREAM("Failed to rotate quickcoupler");
+  if (!this->planAndExecuteJointGoals(joint_states)){
+    ROS_ERROR("Failed to execute joint motion --> quickcoupler rotation");
     return false;
     exit(1);
   }
