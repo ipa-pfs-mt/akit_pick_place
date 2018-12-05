@@ -596,10 +596,13 @@ bool akit_pick_place::openGripper(){
   gripper_command.auxiliary_hydraulic_switch_valve = false;
 
   ros::Time start_time = ros::Time::now();
-  ros::Duration timeout(2.0); // Timeout of 2 seconds
+  ros::Duration timeout(8.0); // Timeout of 8 seconds
   while(ros::Time::now() - start_time < timeout) {
     e1_gripper_pub.publish(gripper_command);
+    ros::Duration(0.05).sleep();
   }
+  gripper_command.auxiliary_hydraulic_valve_opening = 0;
+  e1_gripper_pub.publish(gripper_command);
   ROS_INFO_STREAM("Opened Gripper successfully");
   return true;
 }
@@ -749,7 +752,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
      exit(1);
    }
 
-   sleep(0.5);
+   sleep(1.0);
 
 //   ROS_INFO_STREAM("cartesian path solution points");
 //   for (int i = 0; i < 5; ++i){
@@ -781,10 +784,11 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 
       e1_trajectory_publisher.publish(traj_msg);
 
+      sleep(10.0);
+
       //execute trajectory service parameters left empty
       moveit_msgs::ExecuteKnownTrajectory execute_traj_srv;
       e1_execute_traj_client.call(execute_traj_srv);
-
 
       if (execute_traj_srv.response.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS){
         ROS_INFO_STREAM("Successfully executed cartesian trajectory");
@@ -800,7 +804,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
    }
 }
 
-//executes first pose reached in input position vector
+//executes first reachable pose in input position vector
 bool akit_pick_place::planAndExecuteCartesianGoals(std::vector<geometry_msgs::Pose> poses, std::string pose){
 
   int count = 0;

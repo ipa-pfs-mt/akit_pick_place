@@ -38,10 +38,10 @@ int main(int argc, char **argv){
 
   moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose,"cylinder", 0.5,0.2);
 
-  std::vector<double> joint_states(4,0);
+  /*std::vector<double> joint_states(4,0);
   joint_states.push_back(M_PI/2);
 
-  akit.planAndExecuteJointGoals(joint_states);
+  akit.planAndExecuteJointGoals(joint_states);*/
 
 
   /*akit.generateGrasps(pose, 0.5,0.2);
@@ -51,13 +51,13 @@ int main(int argc, char **argv){
     exit(1);
   }*/
 
-  /*sleep(1.0);
+  sleep(1.0);
 
   akit.allowObjectCollision("cylinder");
 
   sleep(1.0);
 
-  akit.planAndExecute(test_poses, position);
+  akit.planAndExecuteCartesianGoals(test_poses, position);
 
   sleep(1.0);
 
@@ -65,11 +65,11 @@ int main(int argc, char **argv){
 
   sleep(1.0);
 
-  akit.openGripper();*/
+  akit.openGripper();
 
-  /*sleep(10.0);
+  sleep(1.0);
 
-  akit.executeAxisCartesianMotion(true, 0.35 , 'z');*/
+  akit.executeAxisCartesianMotion(true, 0.25 , 'z');
 
 }
 
