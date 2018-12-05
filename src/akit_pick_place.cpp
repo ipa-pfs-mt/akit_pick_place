@@ -125,6 +125,8 @@ akit_pick_place::akit_pick_place(){
 
   e1_execute_traj_client = nh.serviceClient<moveit_msgs::ExecuteKnownTrajectory>("/e1_moveit_interface/execute_kinematic_path");
 
+  e1_clear_traj_client = nh.serviceClient<std_srvs::Empty>("/e1_moveit_interface/clear_trajectory_list");
+
   e1_joint_states_subscriber = nh.subscribe("/e1_interface/joint_states", 1000, &akit_pick_place::jointStatesCallback, this);
 }
 
@@ -754,15 +756,13 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 
    sleep(1.0);
 
-//   ROS_INFO_STREAM("cartesian path solution points");
-//   for (int i = 0; i < 5; ++i){
-//       ROS_INFO_STREAM(cartesian_path_msg.response.solution.joint_trajectory.joint_names[i]);
-//          for (int j = 0; j < 5; ++j){
-//                  ROS_INFO_STREAM(cartesian_path_msg.response.solution.joint_trajectory.points[i].positions[j]);
-//     }
-//   }
-
    if ((cartesian_path_msg.response.fraction * 100) >= 50.0){
+
+      //clear the trajectory list --> workaround
+      std_srvs::Empty empty_traj;
+      e1_clear_traj_client.call(empty_traj);
+
+      //trajectory msg to be published
       moveit_msgs::MoveGroupActionResult traj_msg;
 
       //trajectory message for planned traj is the cartesian path trajectory
@@ -775,12 +775,6 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 
       //add current joint states
       traj_msg.result.trajectory_start = cartesian_path_msg.request.start_state;
-
-//      ROS_INFO_STREAM("joint states trajectory start");
-//      for (int i = 0; i < traj_msg.result.trajectory_start.joint_state.name.size(); i++){
-//        ROS_INFO_STREAM(traj_msg.result.trajectory_start.joint_state.name[i]);
-//        ROS_INFO_STREAM(traj_msg.result.trajectory_start.joint_state.position[i]);
-//      }
 
       e1_trajectory_publisher.publish(traj_msg);
 

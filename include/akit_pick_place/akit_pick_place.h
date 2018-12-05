@@ -29,6 +29,7 @@
 #include <e1_motion_sequence/SetGoal.h>
 #include <e1_motion_sequence/GoToGoal.h>
 #include <e1_interface/E1Command.h>
+#include <std_srvs/Empty.h>
 
 
 #define UP true
@@ -120,6 +121,7 @@ private:
   ros::ServiceClient e1_compute_fk_client;
   ros::ServiceClient e1_cartesian_path_client;
   ros::ServiceClient e1_execute_traj_client;
+  ros::ServiceClient e1_clear_traj_client;
   sensor_msgs::JointState e1_joint_states;
 
   //interactive markers
