@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_visual_tools
   roscpp
   std_msgs
+  std_srvs
   visualization_msgs
   tf
   e1_motion_sequence
