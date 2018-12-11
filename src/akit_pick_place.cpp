@@ -758,7 +758,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 
    if ((cartesian_path_msg.response.fraction * 100) >= 50.0){
 
-      //clear the trajectory list --> workaround
+      //clear the trajectory list
       std_srvs::Empty empty_traj;
       e1_clear_traj_client.call(empty_traj);
 
@@ -778,7 +778,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 
       e1_trajectory_publisher.publish(traj_msg);
 
-      sleep(10.0);
+      sleep(1.0);
 
       //execute trajectory service parameters left empty
       moveit_msgs::ExecuteKnownTrajectory execute_traj_srv;

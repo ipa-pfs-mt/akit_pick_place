@@ -132,6 +132,9 @@ include_directories(
 add_library(${PROJECT_NAME}
   src/akit_pick_place.cpp
 )
+target_link_libraries(${PROJECT_NAME}
+   ${catkin_LIBRARIES}
+ )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -154,9 +157,7 @@ add_library(${PROJECT_NAME}
 #add_dependencies(akit_pick_place ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+
 
 add_executable(pick_place_test scripts/pick_place_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(pick_place_test ${catkin_LIBRARIES})
@@ -225,11 +226,11 @@ target_link_libraries(akit_pick_place ${catkin_LIBRARIES})
 # )
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+   FILES_MATCHING PATTERN "*.h"
+   PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
