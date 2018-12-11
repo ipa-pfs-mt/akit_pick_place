@@ -1,0 +1,37 @@
+# =====================================================
+
+#Initialization parameters
+
+planning_group: 'e1_complete'
+
+world_frame: 'odom_combined'
+
+eef_group: 'gripper'
+
+base_link: 'chassis'
+
+eef_parent_link: 'quickcoupler'
+
+gripper_frame: 'gripper_rotator'
+
+bucket_frame: 'bucket_raedlinger'
+
+gripper_length: 1.05
+
+gripper_jaw_length: 0.3
+
+gripper_side_length: 0.2
+
+side_grasps: false
+
+from_grasp_generator: true
+
+# =====================================================
+
+#tool exchange parameters
+
+quickcoupler_z: 0.13 #distance between quickcoupler frame origin and lock in z-direction (m)
+
+quickcoupler_x: 0.035 #distance between quickcoupler frame origin and edge in x-direction (m)
+
+distance_above_gripper: 0.25 #desired distance of the quickcoupler above the tool (m)

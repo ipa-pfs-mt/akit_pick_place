@@ -1,0 +1,7 @@
+e1_complete: ['chassis', 'cabin' , 'intermediate_cabin_boom', 'boom' , 'stick', 'quickcoupler']
+e1_arm: ['intermediate_cabin_boom', 'boom', 'stick', 'quickcoupler']
+e1_fixed_arm: ['boom', 'stick' , 'quickcoupler']
+e1_stationary: ['cabin', 'intermediate_cabin_boom', 'boom', 'stick', 'quickcoupler']
+e1_stationary_fixed_arm: ['cabin' , 'intermediate_cabin_boom' ,  'boom' , 'stick' , 'quickcoupler']
+e1_platform: ['chassis', 'platform_x', 'platform_y']
+gripper: ['gripper_body', 'gripper_rotator', 'gripper_left', 'gripper_right']
