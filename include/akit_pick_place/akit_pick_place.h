@@ -5,14 +5,18 @@
 #include <fstream>
 #include <iostream>
 #include <tf/transform_datatypes.h>
-#include <visualization_msgs/Marker.h>
+
 #include <moveit_msgs/CollisionObject.h>
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_msgs/DisplayTrajectory.h>
+#include <moveit_msgs/GetPlanningScene.h>
 #include <moveit_msgs/ApplyPlanningScene.h>
 #include <moveit_msgs/AttachedCollisionObject.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
+
+#include <visualization_msgs/Marker.h>
 #include <interactive_markers/interactive_marker_server.h>
+
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 
@@ -37,18 +41,20 @@ private:
   ros::Publisher marker_pub;
   ros::Subscriber marker_sub;
   ros::ServiceClient planning_scene_diff_client;
+  ros::ServiceClient planning_scene_diff_client_;
+  ros::ServiceClient get_planning_scene_client;
   tf::TransformListener transform_listener;
 
-  //akit stuff
+  //akit
   std::string WORLD_FRAME;
   std::string BASE_LINK;
   std::string GRIPPER_FRAME;
   std::string EEF_GROUP;
   std::string BUCKET_FRAME;
-  std::string PLANNING_GROUP_NAME;
-  std::string EEF_PARENT_LINK; //last link in planning group kinematic chain "quickcoupler"
-  double GRIPPER_LENGTH;   //for grasp generation
-  double GRIPPER_JAW_LENGTH; //for cartesian motion
+  std::string PLANNING_GROUP;
+  std::string EEF_PARENT_LINK;
+  double GRIPPER_LENGTH;
+  double GRIPPER_JAW_LENGTH;
   double GRIPPER_SIDE_LENGTH;
   bool gripperSuccess;
   bool akitSuccess;
@@ -70,7 +76,7 @@ private:
   visualization_msgs::Marker marker;   //marker for grasp points
 
 
-  //MoveIt! stuff
+  //MoveIt!
   moveit::planning_interface::MoveGroupInterface *akitGroup;
   moveit::planning_interface::MoveGroupInterface *gripperGroup;
   moveit::planning_interface::PlanningSceneInterface planningSceneInterface;
@@ -121,60 +127,12 @@ private:
 public:
 
   //constructors
-  /**
-   * @brief akit_pick_place constructor
-   * @param planning_group_ string containing planning group name
-   * @param eef_group_ string containing end effector planning group
-   * @param world_frame_ string specifying world frame name
-   * @param base_link_ string specifying base link frame name
-   * @param eef_parent_link_ string specifying end effector parent link name
-   * @param gripper_frame_ string specifying gripper frame name
-   * @param bucket_frame_ string specifying bucket frame name
-   * @param gripper_length_ gripper length required for grasp pose calculations
-   * @param gripper_jaw_length_ gripper jaw length for approach distance --> cartesian motion function
-   * @param gripper_side_length_ gripper side length required for grasp pose calculations
-   * @param set_from_grasp_generator_ bool for using grasp poses from the grasp pose generation instead of manually, set to true
-   */
-  akit_pick_place(std::string planning_group_, std::string eef_group_, std::string world_frame_,
-                  std::string base_link_, std::string eef_parent_link_, std::string gripper_frame_,
-                  std::string bucket_frame_, double gripper_length_, double gripper_jaw_length_,
-                  double gripper_side_length_, bool set_from_grasp_generator_);
-  /**
+   /**
    * @brief akit_pick_place default constructor containing all necessary values and frame names for A-Kit
    */
   akit_pick_place();
   ~akit_pick_place();
 
-  //setters
-  /**
-   * @brief setDefaultPlanningGroup set default planning group from moveit setup assistant = "e1_complete"
-   */
-  void setDefaultPlanningGroup();
-  /**
-   * @brief setPlanningGroup set planning group for motion planning
-   * @param planning_group_ is the string containing the planning group name
-   */
-  void setPlanningGroup(std::string planning_group_);
-  /**
-   * @brief setGripperGroup set gripper group name
-   * @param eef_group_ is the string containing the gripper planning group name
-   */
-  void setGripperGroup(std::string eef_group_);
-  /**
-   * @brief setBaseLink set base link
-   * @param base_link_ is the string containing the base link frame name
-   */
-  void setBaseLink(std::string base_link_);
-  /**
-   * @brief setWorldFrame set world frame
-   * @param world_frame_ is the string containing the world frame name
-   */
-  void setWorldFrame(std::string world_frame_);
-  /**
-   * @brief setGripperFrame set gripper frame
-   * @param gripper_frame_ is the string containing the gripper frame name
-   */
-  void setGripperFrame(std::string gripper_frame_);
   /**
    * @brief setPreGraspPose for manual grasp pose setting instead of the grasp pose generator
    * @param preGraspPose is the geometry_msgs::Pose message provided by user
@@ -189,70 +147,6 @@ public:
    * @brief setGripperLength set gripper length
    * @param gripper_length_ is the value of gripper length
    */
-  void setGripperLength(double gripper_length_);
-  /**
-   * @brief setGripperSideLength set gripper side length
-   * @param gripper_length_ is the value of gripper side length
-   */
-  void setGripperSideLength(double gripper_side_length_);
-  /**
-   * @brief setGripperJawLength set gripper jaw length
-   * @param gripper_length_ is the value of gripper jaw length
-   */
-  void setGripperJawLength(double gripper_jaw_length_);
-  /**
-   * @brief setFromGraspGenerator use the grasp pose generator
-   * @param grasp_generator true for use grasp pose generator
-   */
-  void setFromGraspGenerator(bool grasp_generator);
-  /**
-   * @brief setPlannerID use planner from OMPL
-   * @param planner_id_ planner ID from configuration file
-   */
-  void setPlannerID(std::string planner_id_);
-
-  //getters
-  /**
-   * @brief getPlanningGroup gets planning group
-   * @return string containing planning group
-   */
-  std::string getPlanningGroup();
-  /**
-   * @brief getGripperGroup gets gripper group
-   * @return string containing gripper group
-   */
-  std::string getGripperGroup();
-  /**
-   * @brief getBaseLink gets base link
-   * @return string containing base link name
-   */
-  std::string getBaseLink();
-  /**
-   * @brief getWorldFrame gets world frame
-   * @return string containing world frame name
-   */
-  std::string getWorldFrame();
-  /**
-   * @brief getGripperFrame gets gripper frame
-   * @return string containing gripper frame name
-   */
-  std::string getGripperFrame();
-  /**
-   * @brief getGripperLength gets gripper length
-   * @return value of gripper length
-   */
-  double getGripperLength();
-  /**
-   * @brief getGripperSideLength gets gripper side length
-   * @return value of gripper side length
-   */
-  double getGripperSideLength();
-  /**
-   * @brief getGripperJawLength gets gripper jaw length
-   * @return value of gripper jaw length
-   */
-  double getGripperJawLength();
-  void addOrientationConstraints();
   void writeOutputPlanningTime(std::string file_name);
   void writeOutputTrajectoryLength(std::string file_name);
   /**
@@ -325,22 +219,34 @@ public:
    * @param pose string containing name of pose
    * @return true if motion planning succeeds
    */
-  bool planAndExecute(std::vector<geometry_msgs::Pose> poses, std::string pose);
+  bool planAndExecuteCartesianGoals(std::vector<geometry_msgs::Pose> poses, std::string pose);
   /**
    * @brief allowObjectCollision allows collision of gripper links with object
    * @param object_id string containing objects id
    */
-  void allowObjectCollision(std::string object_id);
+  bool allowObjectCollision(std::string object_id);
   /**
    * @brief allowToolCollision allows collisoin between tool and quickcoupler
    * @param tool_id string containing tool frame id
    */
-  void allowToolCollision(std::string tool_id);
+  bool allowToolCollision(std::string tool_id);
   /**
    * @brief resetAllowedCollisionMatrix resets allowed collision matrix after place routine is finished
    * @param object_id object to be removed from acm
    */
-  void resetAllowedCollisionMatrix(std::string object_id);
+  bool resetAllowedCollisionMatrix(std::string object_id);
+  /**
+     * @brief attachCollisionObject attaches collision object to gripper frame using planning scene monitor
+     * @param collisionObject moveit_msgs collision object to be grasped and attached
+     * @return
+     */
+  bool attachCollisionObject(moveit_msgs::CollisionObject collisionObject);
+  /**
+     * @brief detachCollisionObject detaches collision object from gripper frame using planning scene monitor
+     * @param collisionObject moveit_msgs collision object to be detached from gripper frame
+     * @return
+     */
+  bool detachCollisionObject(moveit_msgs::CollisionObject collisionObject);
   /**
    * @brief pick is pick routine
    * @param object_ a moveit_msgs::CollisionObject message of the object to be picked
@@ -353,12 +259,6 @@ public:
    * @return true if procedure succeeds
    */
   bool place(moveit_msgs::CollisionObject object_);
-  /**
-   * @brief pick_place pick is the place routine
-   * @param object_ a moveit_msgs::CollisionObject message of the object to be picked and placed
-   * @return true if procedure succeeds
-   */
-  bool pick_place(moveit_msgs::CollisionObject object_);
   /**
    * @brief interactive_pick_place is the  pick and place routine using interactive markers
    * @param place_positions vector containing geometry_msgs::Pose messages for place locations
@@ -404,6 +304,8 @@ public:
    * @return the object as moveit_msgs::CollisionObject message
    */
   moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name,  double block_size_x, double block_size_y, double block_size_z);
+
+
 };
 
 #endif // AKIT_PICK_PLACE_H
