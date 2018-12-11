@@ -15,8 +15,10 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_visual_tools
   roscpp
   std_msgs
+  std_srvs
   visualization_msgs
   tf
+  e1_motion_sequence
 )
 
 ## System dependencies are found with CMake's conventions
@@ -109,10 +111,10 @@ find_package(Boost REQUIRED COMPONENTS system)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES akit_pick_place
-#  CATKIN_DEPENDS interactive_markers moveit_core moveit_ros_perception moveit_ros_planning_interface roscpp std_msgs visualization_msgs
-#  DEPENDS system_lib
+   INCLUDE_DIRS include
+   LIBRARIES akit_pick_place
+   CATKIN_DEPENDS interactive_markers moveit_core moveit_ros_perception moveit_ros_planning_interface roscpp std_msgs visualization_msgs
+   DEPENDS system_lib
 )
 
 ###########
@@ -127,14 +129,17 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/akit_pick_place.cpp
-# )
+add_library(${PROJECT_NAME}
+  src/akit_pick_place.cpp
+)
+target_link_libraries(${PROJECT_NAME}
+   ${catkin_LIBRARIES}
+ )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
@@ -149,21 +154,13 @@ include_directories(
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(akit_pick_place ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
 
-#add_executable(akit_pick_place src/akit_pick_place.cpp)
-#target_link_libraries(akit_pick_place ${catkin_LIBRARIES})
 
 add_executable(pick_place_test scripts/pick_place_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(pick_place_test ${catkin_LIBRARIES})
-
-add_executable(pick_place_test_2 scripts/pick_place_test_2.cpp src/akit_pick_place.cpp)
-target_link_libraries(pick_place_test_2 ${catkin_LIBRARIES})
 
 add_executable(random_pick_place_arrange_test scripts/random_pick_place_arrange_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(random_pick_place_arrange_test ${catkin_LIBRARIES})
@@ -198,6 +195,15 @@ target_link_libraries(collision_experiment_2 ${catkin_LIBRARIES})
 add_executable(tutorial scripts/tutorial.cpp src/akit_pick_place.cpp)
 target_link_libraries(tutorial ${catkin_LIBRARIES})
 
+#add_executable(iosb_test scripts/iosb_test.cpp src/akit_pick_place.cpp)
+#target_link_libraries(iosb_test ${catkin_LIBRARIES})
+
+add_executable(test scripts/test.py src/akit_pick_place.cpp)
+target_link_libraries(test ${catkin_LIBRARIES})
+
+target_link_libraries(akit_pick_place ${catkin_LIBRARIES})
+
+
 #############
 ## Install ##
 #############
@@ -220,11 +226,11 @@ target_link_libraries(tutorial ${catkin_LIBRARIES})
 # )
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+   FILES_MATCHING PATTERN "*.h"
+   PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
