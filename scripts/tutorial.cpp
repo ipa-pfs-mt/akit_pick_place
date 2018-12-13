@@ -14,7 +14,9 @@ int main(int argc, char**argv){
   //create akit pick place object
   akit_pick_place akit;
 
-  //create collision object pose
+  akit.openGripper();
+
+ /* //create collision object pose
   geometry_msgs::Pose pick_pose;
   pick_pose.position.x = 2.0;
   pick_pose.position.y = 2.0;
@@ -47,6 +49,6 @@ int main(int argc, char**argv){
   if(!akit.place(cylinder)){
     ROS_ERROR("Failed to place");
     exit(1);
-  }
+  }*/
  return 0;
 }

@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <tf/transform_datatypes.h>
+#include <tf/transform_broadcaster.h>
 
 #include <moveit_msgs/CollisionObject.h>
 #include <moveit_msgs/DisplayRobotState.h>

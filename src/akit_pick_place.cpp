@@ -558,14 +558,28 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
 
 bool akit_pick_place::openGripper(){
 
-  double gripper_open_angle = M_PI/3; //60 deg
-
   //update start state to current state
   gripperState = gripperGroup->getCurrentState();
   gripperGroup->setStartState(*gripperState);
 
-  gripperJointPositions[1] = gripper_open_angle;
-  gripperJointPositions[2] = gripper_open_angle;
+  //clear joint position vector
+  gripperJointPositions.clear();
+
+  //get parameters from server
+  std::vector<double> open_gripper;
+
+  if (!nh.hasParam("/open_gripper")){
+    ROS_ERROR("open gripper parameter not loaded, did you load grasping parameters .yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam("/open_gripper", open_gripper);
+
+  for (int i = 0; i < open_gripper.size(); ++i){
+    gripperJointPositions.push_back(open_gripper[i]);
+  }
+
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
   //plan and execute motion plan
