@@ -50,10 +50,10 @@ akit_pick_place::akit_pick_place(){
 
   nh.getParam("/gripper_frame", GRIPPER_FRAME);
 
-  if (!nh.hasParam("/bucket_frame")){
+  /*if (!nh.hasParam("/bucket_frame")){
     ROS_ERROR("bucket_frame parameter not loaded, did you load initialization data yaml file ?");
     exit(1);
-  }
+  }*/
 
   nh.getParam("/bucket_frame", BUCKET_FRAME);
 
@@ -465,7 +465,8 @@ void akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
   }
 }
 
-void akit_pick_place::visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame){
+//TODO  try with marker array maybe visualization problem is removed
+void akit_pick_place::visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame, double scale){
 
   ROS_INFO_STREAM("---------- Points Visualization ----------");
   uint32_t shape = visualization_msgs::Marker::ARROW;
@@ -473,9 +474,9 @@ void akit_pick_place::visualizeGrasps(std::vector<geometry_msgs::Pose> points, s
   marker.header.stamp = ros::Time::now();
   marker.ns = "basic_shapes";
   marker.type = shape;
-  marker.scale.x = 0.15;
-  marker.scale.y = 0.025;
-  marker.scale.z = 0.025;
+  marker.scale.x = 0.15 * scale;
+  marker.scale.y = 0.025 * scale;
+  marker.scale.z = 0.025 * scale;
   marker.color.r = 0.0f;
   marker.color.g = 0.0f;
   marker.color.b = 1.0f;
@@ -556,6 +557,7 @@ bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //nee
   return (gripperSuccess ? true : false);
 }
 
+//TODO: add variable in config files to be used for each robot
 bool akit_pick_place::openGripper(){
 
   double gripper_open_angle = M_PI/3; //60 deg
@@ -577,6 +579,8 @@ bool akit_pick_place::openGripper(){
   return (gripperSuccess ? true : false);
 }
 
+
+//TODO: add max length opening in config files to be used for each robot
 bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
 
   //relate close gripper to the side lengths of the object --> gripper close angle is related to the minimum side
@@ -614,6 +618,7 @@ bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
   return (gripperSuccess ? true : false);
 }
 
+//TODO: add axis direction of appraoch and retreat in config files to be used for axis argument
 bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesian_distance, char axis){
 
   //update start state to current state
@@ -731,6 +736,7 @@ bool akit_pick_place::planAndExecuteCartesianGoals(std::vector<geometry_msgs::Po
   }
 }
 
+//TODO: add planAndExecuteJointGoals
 
 //allow gripper to touch object to be picked
 bool akit_pick_place::allowObjectCollision(std::string object_id){

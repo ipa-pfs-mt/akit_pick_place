@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <tf/transform_datatypes.h>
+#include <tf/transform_broadcaster.h>
 
 #include <moveit_msgs/CollisionObject.h>
 #include <moveit_msgs/DisplayRobotState.h>
@@ -181,7 +182,7 @@ public:
    * @param points a vector containing geometry_msgs::Pose messages to be published
    * @param frame frame of reference for pose publishing
    */
-  void visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame);
+  void visualizeGrasps(std::vector<geometry_msgs::Pose> points, std::string frame, double scale = 1.0);
   /**
    * @brief rotateGripper rotates the gripper rotator joint
    * @param angle_rad angle of rotation
