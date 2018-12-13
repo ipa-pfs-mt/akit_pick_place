@@ -4,4 +4,6 @@
 
   <rosparam command="load" file="$(find akit_pick_place)/config/initialization.yaml"/>
 
+  <rosparam command="load" file="$(find akit_pick_place)/config/grasping_parameters.yaml"/>
+
 </launch>
