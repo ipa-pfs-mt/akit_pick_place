@@ -842,8 +842,8 @@ bool akit_pick_place::planAndExecuteJointGoals(std::string group, std::vector<do
 
     gripperGroup->setJointValueTarget(gripperJointPositions);
     gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      if (akitSuccess){
-        akitGroup->execute(gripperMotionPlan);
+      if (gripperSuccess){
+        gripperGroup->execute(gripperMotionPlan);
         ROS_INFO_STREAM("executed gripper joint space motion");
       } else {
         ROS_ERROR_STREAM("failed to execute gripper joint space motion");
