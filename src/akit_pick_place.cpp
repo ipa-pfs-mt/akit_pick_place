@@ -128,6 +128,8 @@ akit_pick_place::akit_pick_place(){
   get_planning_scene_client = nh.serviceClient<moveit_msgs::GetPlanningScene>("get_planning_scene");
 
   marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker",10);
+
+  pose_pub = nh.advertise<geometry_msgs::PoseArray>("publish_pose", 10);
 }
 
 //destructor
@@ -782,7 +784,7 @@ bool akit_pick_place::planAndExecuteCartesianGoals(std::vector<geometry_msgs::Po
     } else {
       this->displayTrajectory(MotionPlan,poses[i], pose + std::to_string(count), rviz_visual_tools::colors::ORANGE);
       executed = (akitGroup->execute(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-      ROS_INFO_STREAM("Executing Motion plan to: " << pose << " position: "<< (executed ? "Executed" : "FAILED"));
+      ROS_INFO_STREAM("Executing Motion plan to " << pose << " position, "<< (executed ? "Executed" : "FAILED"));
       if (!executed){
         ROS_ERROR_STREAM("Failed to execute motion plan to " << pose << " position");
         return false;

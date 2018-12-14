@@ -40,6 +40,7 @@ private:
   //ros
   ros::NodeHandle nh;
   ros::Publisher marker_pub;
+  ros::Publisher pose_pub;
   ros::Subscriber marker_sub;
   ros::ServiceClient planning_scene_diff_client;
   ros::ServiceClient planning_scene_diff_client_;
@@ -313,6 +314,15 @@ public:
    * @return the object as moveit_msgs::CollisionObject message
    */
   moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name,  double block_size_x, double block_size_y, double block_size_z);
+
+  void broadcastFrame(geometry_msgs::PoseStamped pose, std::string frame_id);
+
+  tf::Quaternion rotateX(geometry_msgs::PoseStamped pose, double angle);
+  tf::Quaternion rotateY(geometry_msgs::PoseStamped pose, double angle);
+  tf::Quaternion rotateZ(geometry_msgs::PoseStamped pose, double angle);
+  std::vector<geometry_msgs::PoseStamped> generateGrasps(moveit_msgs::CollisionObject object, tf::Quaternion eef_orientation_object_frame);
+  std::vector<geometry_msgs::PoseStamped>transformGrasps(std::vector<geometry_msgs::PoseStamped> grasps);
+  void visualizeGraspPose(std::vector<geometry_msgs::PoseStamped> grasps);
 
 
 };
