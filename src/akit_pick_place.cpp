@@ -576,7 +576,7 @@ bool akit_pick_place::openGripper(){
 
   nh.getParam("/open_gripper", open_gripper);
 
-  for (int i = 0; i < open_gripper.size(); ++i){
+  for (std::size_t i = 0; i < open_gripper.size(); ++i){
     gripperJointPositions.push_back(open_gripper[i]);
   }
 
@@ -593,30 +593,80 @@ bool akit_pick_place::openGripper(){
 
 bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
 
-  //relate close gripper to the side lengths of the object --> gripper close angle is related to the minimum side
-  double max_open_length = 0.7; //measured in Rviz
-  double tolerance = 0.01; //for better caging
-  double min_side = object_.primitives[0].dimensions[0];
-
-  //compute minimum side
-  for(int i = 0.0; i < object_.primitives[0].dimensions.size(); ++i){
-    if (object_.primitives[0].dimensions[i] < min_side){
-      min_side = object_.primitives[0].dimensions[i];
-    }
-  }
-   //to get diameter not radius --> not needed for cubes and cuboids
-  if(object_.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
-    min_side *= 2;
-  }
-
-  double gripper_close_angle = ((min_side * (M_PI/3)) / max_open_length) - tolerance;
-
   //update start state to current state
   gripperState = gripperGroup->getCurrentState();
   gripperGroup->setStartState(*gripperState);
 
-  gripperJointPositions[1] = gripper_close_angle;
-  gripperJointPositions[2] = gripper_close_angle;
+  //relate close gripper to the side lengths of the object --> gripper close angle is related to the minimum side
+
+  //parameters
+  double max_open_length, max_open_gripper_joint_value, tolerance;
+
+  if (!nh.hasParam("/max_open_length")){
+    ROS_ERROR("max_open_length parameter (distance between gripper jaws when fully opened) "
+              "not loaded, did you load grasping parameters .yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam("/max_open_length", max_open_length);
+
+  if (!nh.hasParam("/max_open_gripper_joint_value")){
+    ROS_ERROR("max_open_gripper_joint_value parameter (maximum value for gripper joint when opened) "
+              "not loaded, did you load grasping parameters .yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam("/max_open_gripper_joint_value", max_open_gripper_joint_value);
+
+  if (!nh.hasParam("/close_gripper_tolerance")){
+    ROS_WARN("close_gripper_tolerance parameter (maximum value for gripper joint when opened) "
+              "not loaded, did you load grasping parameters .yaml file ? --> using tolerance = 0.0");
+    tolerance = 0.0;
+
+  } else {
+
+    nh.getParam("/close_gripper_tolerance", tolerance);
+
+  }
+
+  //compute minimum side
+  double min_side = object_.primitives[0].dimensions[0];
+
+  for(std::size_t i = 0; i < object_.primitives[0].dimensions.size(); ++i){
+    if (object_.primitives[0].dimensions[i] < min_side){
+      min_side = object_.primitives[0].dimensions[i];
+    }
+  }
+   //to get diameter not radius --> not needed for cubes and cuboids --> will need further adjusting with vision
+  if(object_.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
+    min_side *= 2;
+  }
+
+  double gripper_close_angle = ((min_side * max_open_gripper_joint_value) / max_open_length) - tolerance;
+
+  //get joints from parameter server
+  std::vector<std::string> gripper_joint_names =  gripperGroup->getJointNames();
+  std::vector<std::string> close_gripper_joints;
+  std::vector<std::string>::iterator it1;
+  std::vector<std::string>::difference_type it2;
+
+  if (!nh.hasParam("/close_gripper_joints")){
+    ROS_ERROR("close_gripper_joints parameter not loaded, did you load grasping parameters .yaml file ?");
+    return false;
+    exit(1);
+  }
+
+  nh.getParam("/close_gripper_joints", close_gripper_joints);
+
+  //find index in vector matching parameters in server
+  for (std::size_t i = 0; i < close_gripper_joints.size(); ++i){
+    it1  = std::find(gripper_joint_names.begin(), gripper_joint_names.end(), close_gripper_joints[i]);
+    it2  = std::distance(gripper_joint_names.begin(), it1);
+    gripperJointPositions[it2] = gripper_close_angle;
+  }
+
   gripperGroup->setJointValueTarget(gripperJointPositions);
 
   //plan and execute motion plan
@@ -703,7 +753,7 @@ bool akit_pick_place::planAndExecuteCartesianGoals(std::vector<geometry_msgs::Po
   int count = 0;
   bool executed, found_ik;
 
-  for(int i = 0; i < poses.size(); ++i){
+  for(std::size_t i = 0; i < poses.size(); ++i){
 
     //convert positions from cartesian space to joint space to work with all planners
     found_ik =  akitState->setFromIK(akitJointModelGroup, poses[i], 10,0.0);
@@ -751,7 +801,7 @@ bool akit_pick_place::allowObjectCollision(std::string object_id){
   acm = planningScenePtr->getAllowedCollisionMatrix();
 
   std::vector<std::string> gripper_links = gripperGroup->getLinkNames();
-  for(int i = 0;i < gripper_links.size(); ++i)
+  for(std::size_t i = 0;i < gripper_links.size(); ++i)
   {
     acm.setEntry(gripper_links[i], object_id, true);
   }
@@ -771,7 +821,7 @@ bool akit_pick_place::resetAllowedCollisionMatrix(std::string object_id){
   acm = planningScenePtr->getAllowedCollisionMatrix();
 
   std::vector<std::string> gripper_links = gripperGroup->getLinkNames();
-  for(int i = 0;i < gripper_links.size(); ++i){
+  for(std::size_t i = 0;i < gripper_links.size(); ++i){
     acm.removeEntry(gripper_links[i], object_id);
   }
 
@@ -806,7 +856,7 @@ bool akit_pick_place::allowToolCollision(std::string tool_id){
 
   nh.getParam(PLANNING_GROUP, group_links);
 
-  for (int i= 0; i < group_links.size(); ++i){
+  for (std::size_t i= 0; i < group_links.size(); ++i){
     acm.setEntry(group_links[i], tool_id, true);
 }
   acm.getMessage(planning_scene_msg_.allowed_collision_matrix);
