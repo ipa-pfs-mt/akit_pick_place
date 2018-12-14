@@ -795,6 +795,64 @@ bool akit_pick_place::planAndExecuteCartesianGoals(std::vector<geometry_msgs::Po
   }
 }
 
+bool akit_pick_place::planAndExecuteJointGoals(std::string group, std::vector<double> joint_states, bool add_to_current_joint_states){
+
+  //update arm start state to current state
+  akitState = akitGroup->getCurrentState();
+  akitGroup->setStartState(*akitState);
+
+  //update gripper start state to current state
+  gripperState = gripperGroup->getCurrentState();
+  gripperGroup->setStartState(*gripperState);
+
+  if (group == PLANNING_GROUP) {
+    akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
+    if (add_to_current_joint_states){
+      for (std::size_t i = 0; i < joint_states.size(); ++i){
+        akitJointPositions[i] += joint_states[i];
+      }
+    } else {
+      for (std::size_t i = 0; i < joint_states.size(); ++i){
+        akitJointPositions[i] = joint_states[i];
+      }
+    }
+
+    akitGroup->setJointValueTarget(akitJointPositions);
+    akitSuccess = (akitGroup->plan(MotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+      if (akitSuccess){
+        akitGroup->execute(MotionPlan);
+        ROS_INFO_STREAM("executed arm joint space motion");
+      } else {
+        ROS_ERROR_STREAM("failed to execute arm joint space motion");
+        return false;
+        exit(1);
+      }
+   } else if (group == EEF_GROUP) { //for robots where the rotator joint is in the gripper group not in the arm, needs further testing whether to remove or leave
+
+    gripperState->copyJointGroupPositions(gripperJointModelGroup,gripperJointPositions);
+    if (add_to_current_joint_states){
+      for (std::size_t i = 0; i < joint_states.size(); ++i){
+        gripperJointPositions[i] += joint_states[i];
+      }
+    } else {
+      for (std::size_t i = 0; i < joint_states.size(); ++i){
+        gripperJointPositions[i] = joint_states[i];
+      }
+    }
+
+    gripperGroup->setJointValueTarget(gripperJointPositions);
+    gripperSuccess = (gripperGroup->plan(gripperMotionPlan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+      if (akitSuccess){
+        akitGroup->execute(gripperMotionPlan);
+        ROS_INFO_STREAM("executed gripper joint space motion");
+      } else {
+        ROS_ERROR_STREAM("failed to execute gripper joint space motion");
+        return false;
+        exit(1);
+      }
+   }
+}
+
 
 //allow gripper to touch object to be picked
 bool akit_pick_place::allowObjectCollision(std::string object_id){
@@ -1508,6 +1566,7 @@ bool akit_pick_place::detachTool(std::string tool_frame_id){
   //update start state to current state
   akitState = akitGroup->getCurrentState();
   akitGroup->setStartState(*akitState);
+
   akitState->copyJointGroupPositions(akitJointModelGroup,akitJointPositions);
 
   //rotate quickcoupler -90deg

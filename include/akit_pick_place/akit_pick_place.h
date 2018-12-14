@@ -215,12 +215,20 @@ public:
    */
   bool executeAxisCartesianMotion(bool direction, double cartesian_distance, char axis);
   /**
-   * @brief planAndExecute motion planning and execution
+   * @brief planAndExecuteCartesianGoals motion planning and execution
    * @param poses geometry_msgs::Pose vector of poses to be planned and executed
    * @param pose string containing name of pose
    * @return true if motion planning succeeds
    */
   bool planAndExecuteCartesianGoals(std::vector<geometry_msgs::Pose> poses, std::string pose);
+  /**
+   * @brief planAndExecuteJointGoals motion planning and execution
+   * @param group planning group name
+   * @param joint_states joint states
+   * @param add_to_current_joint_states
+   * @return
+   */
+  bool planAndExecuteJointGoals(std::string group, std::vector<double> joint_states, bool add_to_current_joint_states = true);
   /**
    * @brief allowObjectCollision allows collision of gripper links with object
    * @param object_id string containing objects id
