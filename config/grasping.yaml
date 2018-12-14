@@ -1,0 +1,18 @@
+#shape of gripper when opened --> values of gripper joints when gripper is opened (in the same order listed in group) 
+open_gripper: [0, 1.047197551, 1.047197551]  #60 deg max opening angle 
+
+#maximum value for gripper joint when opened --> same value from above 
+max_open_gripper_joint_value: 1.047197551
+
+#distance between gripper jaws when fully opened    
+max_open_length: 0.7
+
+#tolerence for gripper closing 
+close_gripper_tolerance: 0.01
+
+#names of gripper joints involved in closing the gripper  
+close_gripper_joints: ['gripper_left_joint', 'gripper_right_joint']
+
+
+
+
