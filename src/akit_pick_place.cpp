@@ -514,15 +514,20 @@ bool akit_pick_place::rotateGripper(double angle_rad){
   return (gripperSuccess ? true : false);
 }
 
-bool akit_pick_place::rotateGripper(moveit_msgs::CollisionObject object_){ //needs adjusting !!
+bool akit_pick_place::rotateGripper(std::string object_id){ //needs adjusting !!
+
+  //get collision object from planning scene
+  std::vector<std::string> object_id_(1,object_id);
+  std::map<std::string, moveit_msgs::CollisionObject> object = planningSceneInterface.getObjects(object_id_);
+  std::map<std::string, moveit_msgs::CollisionObject>::iterator object_it = object.find(object_id);
 
   //update start state to current state
   gripperState = gripperGroup->getCurrentState();
   gripperGroup->setStartState(*gripperState);
 
   geometry_msgs::PoseStamped object_in_world_frame, object_in_gripper_frame;
-  object_in_world_frame.pose = object_.primitive_poses[0];
-  object_in_world_frame.header.frame_id = object_.header.frame_id;
+  object_in_world_frame.pose = object_it->second.primitive_poses[0];
+  object_in_world_frame.header.frame_id = object_it->second.header.frame_id;
 
   //transform object from world frame to gripper rotator frame, wait to avoid time difference exceptions
   transform_listener.waitForTransform(GRIPPER_FRAME, WORLD_FRAME, ros::Time::now(), ros::Duration(0.1));
@@ -593,7 +598,7 @@ bool akit_pick_place::openGripper(){
   return (gripperSuccess ? true : false);
 }
 
-bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
+bool akit_pick_place::closeGripper(std::string object_id){
 
   //update start state to current state
   gripperState = gripperGroup->getCurrentState();
@@ -633,16 +638,22 @@ bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_){
 
   }
 
-  //compute minimum side
-  double min_side = object_.primitives[0].dimensions[0];
+  //get collision object from planning scene
+  std::vector<std::string> object_id_(1,object_id);
+  std::map<std::string, moveit_msgs::CollisionObject> object = planningSceneInterface.getObjects(object_id_);
+  std::map<std::string, moveit_msgs::CollisionObject>::iterator object_it = object.find(object_id);
 
-  for(std::size_t i = 0; i < object_.primitives[0].dimensions.size(); ++i){
-    if (object_.primitives[0].dimensions[i] < min_side){
-      min_side = object_.primitives[0].dimensions[i];
+
+  //compute minimum side
+  double min_side = object_it->second.primitives[0].dimensions[0];
+
+  for(std::size_t i = 0; i < object_it->second.primitives[0].dimensions.size(); ++i){
+    if (object_it->second.primitives[0].dimensions[i] < min_side){
+      min_side = object_it->second.primitives[0].dimensions[i];
     }
   }
    //to get diameter not radius --> not needed for cubes and cuboids --> will need further adjusting with vision
-  if(object_.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
+  if(object_it->second.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
     min_side *= 2;
   }
 
@@ -930,7 +941,12 @@ bool akit_pick_place::allowToolCollision(std::string tool_id){
   }
 }
 
-bool akit_pick_place::attachCollisionObject(moveit_msgs::CollisionObject collisionObject){
+bool akit_pick_place::attachCollisionObject(std::string object_id){
+
+  //get collision object from planning scene
+  std::vector<std::string> object_id_(1,object_id);
+  std::map<std::string, moveit_msgs::CollisionObject> object = planningSceneInterface.getObjects(object_id_);
+  std::map<std::string, moveit_msgs::CollisionObject>::iterator object_it = object.find(object_id);
 
   //create attached collision object + planning scene instances
   moveit_msgs::AttachedCollisionObject attached_collision_object;
@@ -938,12 +954,12 @@ bool akit_pick_place::attachCollisionObject(moveit_msgs::CollisionObject collisi
   moveit_msgs::PlanningScene planning_scene;
 
   //filling attached collision object instance
-  attached_collision_object.object.header.frame_id = collisionObject.header.frame_id;
-  attached_collision_object.object.id = collisionObject.id;
+  attached_collision_object.object.header.frame_id = object_it->second.header.frame_id;
+  attached_collision_object.object.id = object_it->second.id;
   attached_collision_object.link_name = GRIPPER_FRAME;
-  attached_collision_object.object.primitives.push_back(collisionObject.primitives[0]);
-  attached_collision_object.object.primitive_poses.push_back(collisionObject.primitive_poses[0]);
-  attached_collision_object.object.operation = collisionObject.operation; //operation bit is ADD
+  attached_collision_object.object.primitives.push_back(object_it->second.primitives[0]);
+  attached_collision_object.object.primitive_poses.push_back(object_it->second.primitive_poses[0]);
+  attached_collision_object.object.operation = object_it->second.operation; //operation bit is ADD
 
   //remove collision object from enviroment
   ROS_INFO_STREAM("removing collision object from the enviroment");
@@ -975,7 +991,12 @@ bool akit_pick_place::attachCollisionObject(moveit_msgs::CollisionObject collisi
 }
 
 //detach object to gripper using planning scene services
-bool akit_pick_place::detachCollisionObject(moveit_msgs::CollisionObject collisionObject){
+bool akit_pick_place::detachCollisionObject(std::string object_id){
+
+  //get collision object from planning scene
+  std::vector<std::string> object_id_(1,object_id);
+  std::map<std::string, moveit_msgs::CollisionObject> object = planningSceneInterface.getObjects(object_id_);
+  std::map<std::string, moveit_msgs::CollisionObject>::iterator object_it = object.find(object_id);
 
   //remove first from attached objects and add to the planning scene
 
@@ -995,7 +1016,7 @@ bool akit_pick_place::detachCollisionObject(moveit_msgs::CollisionObject collisi
   detached_collision_object.link_name = get_planning_scene_srv.response.scene.robot_state.attached_collision_objects[0].link_name;
   detached_collision_object.object.primitives.push_back(get_planning_scene_srv.response.scene.robot_state.attached_collision_objects[0].object.primitives[0]);
   detached_collision_object.object.primitive_poses.push_back(get_planning_scene_srv.response.scene.robot_state.attached_collision_objects[0].object.primitive_poses[0]);
-  detached_collision_object.object.operation = collisionObject.operation; //operation bit is ADD
+  detached_collision_object.object.operation = object_it->second.operation; //operation bit is ADD
 
   //removing from attached collision objects
   detached_collision_object.object.operation = detached_collision_object.object.REMOVE; //operation bit is REMOVE from attached
@@ -1024,7 +1045,7 @@ bool akit_pick_place::detachCollisionObject(moveit_msgs::CollisionObject collisi
   }
 }
 
-bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
+bool akit_pick_place::pick(std::string object_id){
   ROS_INFO_STREAM("---------- Starting Pick Routine ----------");
 
   //update start state to current state
@@ -1065,7 +1086,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   }
 
   if (!side_grasps){   //rotating gripper to adjust with different orientations (only works with top grasping)
-    if (!this->rotateGripper(object_)){
+    if (!this->rotateGripper(object_id)){
       ROS_ERROR("Failed to rotate Gripper");
       return false;
       exit(1);
@@ -1091,21 +1112,21 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   }
 
   //add allowed collision matrix
-  if (!this->allowObjectCollision(object_.id)){
+  if (!this->allowObjectCollision(object_id)){
      ROS_ERROR("Failed to allow collision with object ");
      return false;
      exit(1);
  }
 
   //closing gripper
-  if (!this->closeGripper(object_)){
+  if (!this->closeGripper(object_id)){
     ROS_ERROR("Failed to close Gripper");
     return false;
     exit(1);
   }
 
   //attaching object to gripper
-  if (!this->attachCollisionObject(object_)){
+  if (!this->attachCollisionObject(object_id)){
       ROS_ERROR("Failed to attach collision object ");
       return false;
       exit(1);
@@ -1125,7 +1146,7 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
   return true;
 }
 
-bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
+bool akit_pick_place::place(std::string object_id){
   ROS_INFO_STREAM("---------- Starting Place Routine ----------");
 
   //update start state to current state
@@ -1166,7 +1187,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   }
 
   //detach object from gripper
-  if (!this->detachCollisionObject(object_)){
+  if (!this->detachCollisionObject(object_id)){
      ROS_ERROR("Failed to detach collision object ");
      return false;
      exit(1);
@@ -1192,7 +1213,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
   visual_tools->deleteAllMarkers();
 
   //reset allowed collision matrix
-  if (!this->resetAllowedCollisionMatrix(object_.id)){
+  if (!this->resetAllowedCollisionMatrix(object_id)){
       ROS_ERROR("Failed to reset allowed collision matrix. object still not in collision");
       return false;
       exit(1);
@@ -1363,7 +1384,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
         if (interactive_name == it->first){
           if (it->second.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
             this->generateGrasps(interactive_pose, it->second.primitives[0].dimensions[0], it->second.primitives[0].dimensions[1]);
-            if(!this->pick(it->second)){
+            if(!this->pick(it->first)){
               ROS_ERROR("Failed to pick");
               return false;
               exit(1);
@@ -1371,7 +1392,7 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
             break;
           } else if (it->second.primitives[0].type == shape_msgs::SolidPrimitive::BOX){
             this->generateGrasps(interactive_pose, it->second.primitives[0].dimensions[0]);
-            if (!this->pick(it->second)){
+            if (!this->pick(it->first)){
               ROS_ERROR("Failed to pick");
               return false;
               exit(1);
@@ -1388,14 +1409,14 @@ bool akit_pick_place::interactive_pick_place(std::vector<geometry_msgs::Pose> pl
     for(a_it = attached_collision_objects_map.begin();a_it != attached_collision_objects_map.end(); ++a_it){
       if (a_it->second.object.primitives[0].type == shape_msgs::SolidPrimitive::CYLINDER){
         this->generateGrasps(place_positions[count],a_it->second.object.primitives[0].dimensions[0], a_it->second.object.primitives[0].dimensions[1]);
-        if(!this->place(a_it->second.object)){
+        if(!this->place(a_it->first)){
           ROS_ERROR("Failed to place");
           return false;
           exit(1);
         }
       } else if (a_it->second.object.primitives[0].type == shape_msgs::SolidPrimitive::BOX){
         this->generateGrasps(place_positions[count],a_it->second.object.primitives[0].dimensions[0]);
-        if(!this->place(a_it->second.object)){
+        if(!this->place(a_it->first)){
           ROS_ERROR("Failed to place");
           return false;
           exit(1);

@@ -195,7 +195,7 @@ public:
    * @param object_ a moveit_msgs::CollisionObject message describing the object to be picked
    * @return true if rotation succeeds
    */
-  bool rotateGripper(moveit_msgs::CollisionObject object_);
+  bool rotateGripper(std::string object_id);
   /**
    * @brief openGripper open gripper jaws
    * @return true if opening gripper succeeds
@@ -206,7 +206,7 @@ public:
    * @param object_ a moveit_msgs::CollisionObject message describing the object to be picked
    * @return true if closing gripper succeeds
    */
-  bool closeGripper(moveit_msgs::CollisionObject object_);
+  bool closeGripper(std::string object_id);
   /**
    * @brief executeAxisCartesianMotion executes cartesian motion for the parent link of end effector
    * @param direction true for upwards axis motion, false for downwards axis motion
@@ -250,25 +250,25 @@ public:
      * @param collisionObject moveit_msgs collision object to be grasped and attached
      * @return
      */
-  bool attachCollisionObject(moveit_msgs::CollisionObject collisionObject);
+  bool attachCollisionObject(std::string object_id);
   /**
      * @brief detachCollisionObject detaches collision object from gripper frame using planning scene monitor
      * @param collisionObject moveit_msgs collision object to be detached from gripper frame
      * @return
      */
-  bool detachCollisionObject(moveit_msgs::CollisionObject collisionObject);
+  bool detachCollisionObject(std::string object_id);
   /**
    * @brief pick is pick routine
    * @param object_ a moveit_msgs::CollisionObject message of the object to be picked
    * @return true if procedure succeeds
    */
-  bool pick(moveit_msgs::CollisionObject object_);
+  bool pick(std::string object_id);
   /**
    * @brief place is place routine
    * @param object_  a moveit_msgs::CollisionObject message of the object to be placed
    * @return true if procedure succeeds
    */
-  bool place(moveit_msgs::CollisionObject object_);
+  bool place(std::string object_id);
   /**
    * @brief interactive_pick_place is the  pick and place routine using interactive markers
    * @param place_positions vector containing geometry_msgs::Pose messages for place locations
@@ -320,7 +320,7 @@ public:
   tf::Quaternion rotateX(geometry_msgs::PoseStamped pose, double angle);
   tf::Quaternion rotateY(geometry_msgs::PoseStamped pose, double angle);
   tf::Quaternion rotateZ(geometry_msgs::PoseStamped pose, double angle);
-  std::vector<geometry_msgs::PoseStamped> generateGrasps(moveit_msgs::CollisionObject object);
+  std::vector<geometry_msgs::PoseStamped> generateGrasps(std::string object);
   std::vector<geometry_msgs::PoseStamped>transformGrasps(std::vector<geometry_msgs::PoseStamped> grasps);
   void visualizeGraspPose(std::vector<geometry_msgs::PoseStamped> grasps);
 

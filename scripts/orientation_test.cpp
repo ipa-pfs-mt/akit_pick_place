@@ -42,9 +42,9 @@ int main(int argc, char **argv){
   moveit_msgs::CollisionObject cylinder =  akit.addCollisionCylinder(barrelPose,"cylinder",CYLINDER_HEIGHT,CYLINDER_RADIUS);
 
   akit.generateGrasps(barrelPose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
-  akit.pick(cylinder);
+  akit.pick("cylinder");
   akit.generateGrasps(barrelPlace, CYLINDER_HEIGHT,CYLINDER_RADIUS);
-  akit.place(cylinder);
+  akit.place("cylinder");
 
   /*moveit_msgs::CollisionObject block = akit.addCollisionBlock(blockPose,"block",BLOCK_SIZE,BLOCK_SIZE,BLOCK_SIZE);
 

@@ -15,19 +15,6 @@ int main(int argc, char **argv){
 
   moveit::planning_interface::MoveGroupInterface move_group("gripper");
 
-  geometry_msgs::PoseStamped test_pose;
-  test_pose.header.frame_id = BASE_LINK_FRAME;
-  test_pose.pose.position.x = 4.5;
-  test_pose.pose.position.y = 0.0;
-  test_pose.pose.position.z = 0.25;
-  test_pose.pose.orientation.w = 1.0;
-  test_pose.pose.orientation.x = 0.0;
-  test_pose.pose.orientation.y = 0.0;
-  test_pose.pose.orientation.z = 0.0;
-
-  moveit_msgs::CollisionObject block =  akit.addCollisionBlock(test_pose.pose, "block", 0.25,0.25,0.75);
-  //akit.broadcastFrame(test_pose, "block");
-
   geometry_msgs::PoseStamped eef_parent_link_pose = move_group.getCurrentPose("quickcoupler");
   ROS_INFO_STREAM("Frame " << eef_parent_link_pose.header.frame_id);
   ROS_INFO_STREAM("x: " << eef_parent_link_pose.pose.position.x);
@@ -56,7 +43,7 @@ int main(int argc, char **argv){
   ROS_INFO_STREAM("orientation z: " << block_frame.pose.orientation.z);
   ROS_INFO_STREAM("orientation w: " << block_frame.pose.orientation.w);
 
-  std::vector<geometry_msgs::PoseStamped> grasps = akit.generateGrasps(block);
+  std::vector<geometry_msgs::PoseStamped> grasps = akit.generateGrasps("block");
   akit.visualizeGraspPose(grasps);
 }
 

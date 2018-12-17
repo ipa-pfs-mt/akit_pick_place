@@ -67,13 +67,13 @@ int main(int argc, char**argv){
   akit.pick(BLOCK_NAME);*/
 
   akit.generateGrasps(blockPose,CYLINDER_HEIGHT,CYLINDER_RADIUS, true);
-  akit.pick(Cylinder);
+  akit.pick(CYLINDER_NAME);
 
   /*akit.generateGrasps(placePose, BLOCK_SIZE);
   akit.place(BLOCK_NAME);*/
 
   akit.generateGrasps(placePose,CYLINDER_HEIGHT,CYLINDER_RADIUS, true);
-  akit.place(Cylinder);
+  akit.place(CYLINDER_NAME);
 
   return 0;
 }

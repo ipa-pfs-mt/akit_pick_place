@@ -37,7 +37,7 @@ int main(int argc, char**argv){
   akit.generateGrasps(pick_pose, CYLINDER_HEIGHT,CYLINDER_RADIUS);
 
   //start pick routine
-  if(!akit.pick(cylinder)){
+  if(!akit.pick(CYLINDER_NAME)){
     ROS_ERROR("Failed to pick");
     exit(1);
   }
@@ -46,7 +46,7 @@ int main(int argc, char**argv){
   akit.generateGrasps(place_pose, CYLINDER_HEIGHT,CYLINDER_RADIUS);
 
   //start place routine
-  if(!akit.place(cylinder)){
+  if(!akit.place(CYLINDER_NAME)){
     ROS_ERROR("Failed to place");
     exit(1);
   }
