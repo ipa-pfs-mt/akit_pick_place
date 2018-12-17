@@ -320,10 +320,9 @@ public:
   tf::Quaternion rotateX(geometry_msgs::PoseStamped pose, double angle);
   tf::Quaternion rotateY(geometry_msgs::PoseStamped pose, double angle);
   tf::Quaternion rotateZ(geometry_msgs::PoseStamped pose, double angle);
-  std::vector<geometry_msgs::PoseStamped> generateGrasps(moveit_msgs::CollisionObject object, tf::Quaternion eef_orientation_object_frame);
+  std::vector<geometry_msgs::PoseStamped> generateGrasps(moveit_msgs::CollisionObject object);
   std::vector<geometry_msgs::PoseStamped>transformGrasps(std::vector<geometry_msgs::PoseStamped> grasps);
   void visualizeGraspPose(std::vector<geometry_msgs::PoseStamped> grasps);
-
 
 };
 

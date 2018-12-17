@@ -19,7 +19,7 @@ int main(int argc, char**argv){
  //create collision object pose
   geometry_msgs::Pose pick_pose;
   pick_pose.position.x = 2.0;
-  pick_pose.position.y = 2.0;
+  pick_pose.position.y = 0.0;
   pick_pose.position.z = 0.17;
   pick_pose.orientation.w = 1.0;
   pick_pose.orientation.x = 0.0;

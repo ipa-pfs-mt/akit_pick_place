@@ -163,9 +163,6 @@ target_link_libraries(${PROJECT_NAME}
 add_executable(pick_place_test scripts/pick_place_test.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
 target_link_libraries(pick_place_test ${catkin_LIBRARIES})
 
-add_executable(random_pick_place_arrange_test scripts/random_pick_place_arrange_test.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
-target_link_libraries(random_pick_place_arrange_test ${catkin_LIBRARIES})
-
 add_executable(interactive_markers_test scripts/interactive_markers_test.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
 target_link_libraries(interactive_markers_test ${catkin_LIBRARIES})
 
@@ -175,26 +172,14 @@ target_link_libraries(interactive_pick_test ${catkin_LIBRARIES})
 add_executable(orientation_test scripts/orientation_test.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
 target_link_libraries(orientation_test ${catkin_LIBRARIES})
 
-add_executable(orientation_test_2 scripts/orientation_test_2.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
-target_link_libraries(orientation_test_2 ${catkin_LIBRARIES})
-
-add_executable(tool_attach scripts/tool_attach.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
-target_link_libraries(tool_attach ${catkin_LIBRARIES})
-
 add_executable(tool_exchange_test scripts/tool_exchange_test.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
 target_link_libraries(tool_exchange_test ${catkin_LIBRARIES})
 
-add_executable(simple_experiment_1 scripts/simple_experiment_1.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
-target_link_libraries(simple_experiment_1 ${catkin_LIBRARIES})
-
-add_executable(collision_experiment_1 scripts/collision_experiment_1.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
-target_link_libraries(collision_experiment_1 ${catkin_LIBRARIES})
-
-add_executable(collision_experiment_2 scripts/collision_experiment_2.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
-target_link_libraries(collision_experiment_2 ${catkin_LIBRARIES})
-
 add_executable(tutorial scripts/tutorial.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
 target_link_libraries(tutorial ${catkin_LIBRARIES})
+
+add_executable(grasp_config scripts/grasp_config.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
+target_link_libraries(grasp_config ${catkin_LIBRARIES})
 
 #add_executable(iosb_test scripts/iosb_test.cpp src/akit_pick_place.cpp)
 #target_link_libraries(iosb_test ${catkin_LIBRARIES})
