@@ -745,7 +745,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
   }
 }
 
-//executes first pose reached in input position vector
+//executes first pose reached in input position vector --> modify to execute highest score in vector
 bool akit_pick_place::planAndExecuteCartesianGoals(std::vector<geometry_msgs::Pose> poses, std::string pose){
 
   //update start state to current state
@@ -1054,10 +1054,6 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_){
     }
   }
 
-  //this->writeOutputPlanningTime("planning_time_LBKPIECE_simple_experiment_pick.txt");
-
-  //this->writeOutputTrajectoryLength("trajectory_length_LBKPIECE_simple_experiment_pick.txt");
-
   //clear grasp_pose_vector
   grasp_pose_vector.clear();
 
@@ -1158,10 +1154,6 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_){
       exit(1);
     }
   }
-
-  //this->writeOutputPlanningTime("planning_time_LBKPIECE_simple_experiment_place.txt");
-
-  //this->writeOutputTrajectoryLength("trajectory_length_LBKPIECE_simple_experiment_place.txt");
 
   //clear grasp pose vector
   grasp_pose_vector.clear();

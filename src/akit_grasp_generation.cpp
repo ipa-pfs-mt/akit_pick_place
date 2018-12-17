@@ -80,7 +80,19 @@ tf::Quaternion akit_pick_place::rotateZ(geometry_msgs::PoseStamped pose, double 
   return nq;
 }
 
-std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(moveit_msgs::CollisionObject object, tf::Quaternion eef_orientation_object_frame){
+std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(moveit_msgs::CollisionObject object){
+
+  //get pregrasp shape
+  std::vector<double> eef_pregrasp_orientation;
+
+  if (!nh.hasParam("/eef_parent_link_pregrasp_orientation")){
+    ROS_ERROR("eef_parent_link_pregrasp_orientation parameter not loaded, did you load grasping parameters .yaml file ?");
+    //return false;
+    exit(1);
+  }
+
+  nh.getParam("/eef_parent_link_pregrasp_orientation", eef_pregrasp_orientation);
+
   //grasp vector to be set
   std::vector<geometry_msgs::PoseStamped> grasps;
   double p = 0.65; //grasp starts near edge of object
@@ -94,10 +106,10 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(moveit_m
   grasp_xz.pose.position.x = - (object.primitives[0].dimensions[0] / 2) - GRIPPER_LENGTH;
   grasp_xz.pose.position.y = 0.0;
   grasp_xz.pose.position.z = 0.0;
-  grasp_xz.pose.orientation.x = eef_orientation_object_frame.getX();
-  grasp_xz.pose.orientation.y = eef_orientation_object_frame.getY();
-  grasp_xz.pose.orientation.z = eef_orientation_object_frame.getZ();
-  grasp_xz.pose.orientation.w = eef_orientation_object_frame.getW();
+  grasp_xz.pose.orientation.x = eef_pregrasp_orientation[0];
+  grasp_xz.pose.orientation.y = eef_pregrasp_orientation[1];
+  grasp_xz.pose.orientation.z = eef_pregrasp_orientation[2];
+  grasp_xz.pose.orientation.w = eef_pregrasp_orientation[3];
 
   graspXZ = grasp_xz;
 
@@ -221,6 +233,7 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(moveit_m
   return grasps;
 }
 
+//transforms grasps to base frame for motion planning
 std::vector<geometry_msgs::PoseStamped> akit_pick_place::transformGrasps(std::vector<geometry_msgs::PoseStamped> grasps){
 
   std::vector<geometry_msgs::PoseStamped> transformed_grasps(grasps.begin(), grasps.end());

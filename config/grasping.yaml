@@ -13,6 +13,9 @@ max_open_length: 0.7
 #tolerence for gripper closing 
 close_gripper_tolerance: 0.01
 
+#eef parent link in test block frame obtained from grasp config script
+eef_parent_link_pregrasp_orientation: [0.0, -0.707, 0.0, 0.707]
+
 
 
 
