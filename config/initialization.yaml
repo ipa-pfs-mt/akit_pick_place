@@ -16,7 +16,7 @@ gripper_frame: 'gripper_rotator'
 
 bucket_frame: 'bucket_raedlinger'
 
-gripper_length: 1.05
+gripper_length: 1.03
 
 gripper_jaw_length: 0.3
 
@@ -24,7 +24,6 @@ gripper_side_length: 0.2
 
 side_grasps: false
 
-from_grasp_generator: true
 
 # =====================================================
 

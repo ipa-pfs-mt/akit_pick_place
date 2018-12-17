@@ -80,7 +80,7 @@ tf::Quaternion akit_pick_place::rotateZ(geometry_msgs::PoseStamped pose, double 
   return nq;
 }
 
-std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::string object_id){
+std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::string object_id, bool visualize_grasps){
 
   //get pregrasp shape
   std::vector<double> eef_pregrasp_orientation;
@@ -98,8 +98,6 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
   std::map<std::string, moveit_msgs::CollisionObject> object = planningSceneInterface.getObjects(object_id_);
   std::map<std::string, moveit_msgs::CollisionObject>::iterator object_it = object.find(object_id);
 
-  //grasp vector to be set
-  std::vector<geometry_msgs::PoseStamped> grasps;
   double p = 0.65; //grasp starts near edge of object
 
   //start grasp generation in XZ plane
@@ -149,7 +147,6 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
     grasps.push_back(graspYZ);
 
   }
-
   //rotate again around z-axis
   tf::Quaternion e =  rotateZ(graspYZ, angle);
   graspXZ.pose.position.x *= -1;
@@ -257,6 +254,12 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
     graspXY.pose.position.y = i;
     grasps.push_back(graspXY);
   }
+
+  if (visualize_grasps){
+    sleep(1.0);
+    this->visualizeGraspPose(grasps);
+  }
+
   return grasps;
 }
 
@@ -284,10 +287,4 @@ void akit_pick_place::visualizeGraspPose(std::vector<geometry_msgs::PoseStamped>
   }
   pose_pub.publish(poseArray);
 }
-
-
-
-
-
-
 

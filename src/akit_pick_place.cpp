@@ -85,14 +85,6 @@ akit_pick_place::akit_pick_place(){
 
   nh.getParam("/side_grasps", side_grasps);
 
-  if (!nh.hasParam("/from_grasp_generator")){
-    ROS_ERROR("from_grasp_generator parameter not loaded, did you load initialization data yaml file ?");
-    exit(1);
-  }
-
-  nh.getParam("/from_grasp_generator", FromGraspGenerator);
-
-
   waypoints = std::vector<geometry_msgs::Pose>(1);
 
   akitGroup = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP);
@@ -134,13 +126,6 @@ akit_pick_place::akit_pick_place(){
 
 //destructor
 akit_pick_place::~akit_pick_place(){
-}
-
-void akit_pick_place::setPreGraspPose(geometry_msgs::Pose preGraspPose){
-  pre_grasp_pose = preGraspPose;
-}
-void akit_pick_place::setPrePlacePose(geometry_msgs::Pose prePlacePose){
-  pre_place_pose = prePlacePose;
 }
 
 void akit_pick_place::writeOutputPlanningTime(std::string file_name){
@@ -1045,7 +1030,7 @@ bool akit_pick_place::detachCollisionObject(std::string object_id){
   }
 }
 
-bool akit_pick_place::pick(std::string object_id){
+bool akit_pick_place::pick(std::string object_id, bool new_grasp_generation){ //temp bool until akit is finished
   ROS_INFO_STREAM("---------- Starting Pick Routine ----------");
 
   //update start state to current state
@@ -1053,27 +1038,35 @@ bool akit_pick_place::pick(std::string object_id){
   akitGroup->setStartState(*akitState);
 
   //move from home position to pre-grasp position
-  if(FromGraspGenerator){
+  if (new_grasp_generation){
 
-    //loop through all grasp poses
-    if(!this->planAndExecuteCartesianGoals(grasp_pose_vector, "pre_grasp")){
-      ROS_ERROR("Failed to plan and execute");
-      grasp_pose_vector.clear();
-      return false;
-      exit(1);
+      //transform grasps to base link frame
+      ROS_INFO_STREAM("Transforming grasps to base link frame");
+      std::vector<geometry_msgs::PoseStamped> transformed_grasps = this->transformGrasps(grasps);
+      std::vector<geometry_msgs::Pose> poses;
+      poses.clear();
+
+      for (std::size_t i = 0; i < transformed_grasps.size(); ++i){
+          poses.push_back(transformed_grasps[i].pose);
+      }
+
+      //loop through all grasp poses
+      if(!this->planAndExecuteCartesianGoals(poses, "pre_grasp")){
+        ROS_ERROR("Failed to plan and execute");
+        return false;
+        exit(1);
+      }
+
+    } else {
+
+      //loop through all grasp poses
+      if(!this->planAndExecuteCartesianGoals(grasp_pose_vector, "pre_grasp")){
+        ROS_ERROR("Failed to plan and execute");
+        grasp_pose_vector.clear();
+        return false;
+        exit(1);
+      }
     }
-
-  } else { //if grasp poses are entered separatly from blender(needed if object is not a box,cuboid,cylinder!)
-
-    std::vector<geometry_msgs::Pose> positions;
-    positions.push_back(pre_grasp_pose);
-
-    if(!this->planAndExecuteCartesianGoals(positions, "pre-grasp")){
-      ROS_ERROR("Failed to plan and execute");
-      return false;
-      exit(1);
-    }
-  }
 
   //clear grasp_pose_vector
   grasp_pose_vector.clear();
@@ -1101,7 +1094,7 @@ bool akit_pick_place::pick(std::string object_id){
   }*/
 
   int count = 0.0;
-  while (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
+  while (!this->executeAxisCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
     this->rotateGripper(M_PI/6);
     count++;
     if (count == 6.0) {
@@ -1136,7 +1129,7 @@ bool akit_pick_place::pick(std::string object_id){
   ros::Duration(1.0).sleep();
 
   //cartesian motion upwards (post-grasp position)
-  if (!this->executeAxisCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
+  if (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
     ROS_ERROR("Failed to execute upwards cartesian motion");
     return false;
     exit(1);
@@ -1154,26 +1147,13 @@ bool akit_pick_place::place(std::string object_id){
   akitGroup->setStartState(*akitState);
 
   //moving from post-grasp position to pre-place position
-  if(FromGraspGenerator){
 
-    //loop through all grasp poses
-    if(!this->planAndExecuteCartesianGoals(grasp_pose_vector, "pre_place")){
-      ROS_ERROR("Failed to plan and execute");
-      grasp_pose_vector.clear();
-      return false;
-      exit(1);
-    }
-
-  } else { //if place poses are entered separatly from blender(needed if object is not a box,cuboid,cylinder!)
-
-    std::vector<geometry_msgs::Pose> positions;
-    positions.push_back(pre_place_pose);
-
-    if(!this->planAndExecuteCartesianGoals(positions, "pre_place")){
-      ROS_ERROR("Failed to plan and execute");
-      return false;
-      exit(1);
-    }
+  //loop through all grasp poses
+  if(!this->planAndExecuteCartesianGoals(grasp_pose_vector, "pre_place")){
+    ROS_ERROR("Failed to plan and execute");
+    grasp_pose_vector.clear();
+    return false;
+    exit(1);
   }
 
   //clear grasp pose vector

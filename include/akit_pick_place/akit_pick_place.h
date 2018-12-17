@@ -70,6 +70,8 @@ private:
   moveit_msgs::RobotTrajectory trajectory;
   std::vector<geometry_msgs::Pose> waypoints;
   std::vector<geometry_msgs::Pose> grasp_pose_vector;
+  std::vector<geometry_msgs::PoseStamped> grasps;
+
   std::vector<moveit_msgs::CollisionObject> collision_objects_vector;
   CollisionObjectsMap collision_objects_map;
   AttachedCollisionObjectsMap attached_collision_objects_map;
@@ -135,20 +137,6 @@ public:
   akit_pick_place();
   ~akit_pick_place();
 
-  /**
-   * @brief setPreGraspPose for manual grasp pose setting instead of the grasp pose generator
-   * @param preGraspPose is the geometry_msgs::Pose message provided by user
-   */
-  void setPreGraspPose(geometry_msgs::Pose preGraspPose);
-  /**
-   * @brief setPrePlacePose for manual grasp pose setting instead of the grasp pose generator
-   * @param preGraspPose is the geometry_msgs::Pose message provided by user
-   */
-  void setPrePlacePose(geometry_msgs::Pose prePlacePose);
-  /**
-   * @brief setGripperLength set gripper length
-   * @param gripper_length_ is the value of gripper length
-   */
   void writeOutputPlanningTime(std::string file_name);
   void writeOutputTrajectoryLength(std::string file_name);
   /**
@@ -262,7 +250,7 @@ public:
    * @param object_ a moveit_msgs::CollisionObject message of the object to be picked
    * @return true if procedure succeeds
    */
-  bool pick(std::string object_id);
+  bool pick(std::string object_idm, bool new_grasp_generation = false);
   /**
    * @brief place is place routine
    * @param object_  a moveit_msgs::CollisionObject message of the object to be placed
@@ -320,7 +308,7 @@ public:
   tf::Quaternion rotateX(geometry_msgs::PoseStamped pose, double angle);
   tf::Quaternion rotateY(geometry_msgs::PoseStamped pose, double angle);
   tf::Quaternion rotateZ(geometry_msgs::PoseStamped pose, double angle);
-  std::vector<geometry_msgs::PoseStamped> generateGrasps(std::string object);
+  std::vector<geometry_msgs::PoseStamped> generateGrasps(std::string object, bool visualize_grasps = true);
   std::vector<geometry_msgs::PoseStamped>transformGrasps(std::vector<geometry_msgs::PoseStamped> grasps);
   void visualizeGraspPose(std::vector<geometry_msgs::PoseStamped> grasps);
 
