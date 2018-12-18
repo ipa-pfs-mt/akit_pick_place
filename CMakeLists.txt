@@ -181,6 +181,9 @@ target_link_libraries(tutorial ${catkin_LIBRARIES})
 add_executable(grasp_config scripts/grasp_config.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
 target_link_libraries(grasp_config ${catkin_LIBRARIES})
 
+add_executable(broadcastor scripts/broadcastor.cpp src/akit_pick_place.cpp src/akit_grasp_generation.cpp)
+target_link_libraries(broadcastor ${catkin_LIBRARIES})
+
 #add_executable(iosb_test scripts/iosb_test.cpp src/akit_pick_place.cpp)
 #target_link_libraries(iosb_test ${catkin_LIBRARIES})
 
