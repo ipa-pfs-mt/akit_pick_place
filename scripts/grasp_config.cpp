@@ -1,6 +1,6 @@
 #include <akit_pick_place/akit_pick_place.h>
 
-std::string BASE_LINK_FRAME = "chassis";
+std::string BASE_LINK_FRAME = "root";
 std::string OBJECT_FRAME = "block";
 
 
@@ -15,7 +15,7 @@ int main(int argc, char **argv){
 
   moveit::planning_interface::MoveGroupInterface move_group("gripper");
 
-  geometry_msgs::PoseStamped eef_parent_link_pose = move_group.getCurrentPose("quickcoupler");
+  geometry_msgs::PoseStamped eef_parent_link_pose = move_group.getCurrentPose("j2n6s300_end_effector");
   ROS_INFO_STREAM("Frame " << eef_parent_link_pose.header.frame_id);
   ROS_INFO_STREAM("x: " << eef_parent_link_pose.pose.position.x);
   ROS_INFO_STREAM("y: " << eef_parent_link_pose.pose.position.y);
