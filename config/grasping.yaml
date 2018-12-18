@@ -16,6 +16,14 @@ close_gripper_tolerance: 0.01
 #eef parent link in test block frame obtained from grasp config script
 eef_parent_link_pregrasp_orientation: [0.0, -0.707, 0.0, 0.707]
 
+#axis of approach of eef parent link 
+approach_motion_axis: 'z'
+
+#direction of approach --> if direction is in the 
+direction_of_approach: false
+
+
+
 
 
 

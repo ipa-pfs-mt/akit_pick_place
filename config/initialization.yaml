@@ -22,9 +22,6 @@ gripper_jaw_length: 0.3
 
 gripper_side_length: 0.2
 
-side_grasps: false
-
-
 # =====================================================
 
 #tool exchange parameters
