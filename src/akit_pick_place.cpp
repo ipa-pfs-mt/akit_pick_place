@@ -78,13 +78,6 @@ akit_pick_place::akit_pick_place(){
 
   nh.getParam("/gripper_side_length", GRIPPER_SIDE_LENGTH);
 
-  if (!nh.hasParam("/side_grasps")){
-    ROS_ERROR("side_grasps parameter not loaded, did you load initialization data yaml file ?");
-    exit(1);
-  }
-
-  nh.getParam("/side_grasps", side_grasps);
-
   waypoints = std::vector<geometry_msgs::Pose>(1);
 
   akitGroup = new moveit::planning_interface::MoveGroupInterface(PLANNING_GROUP);
@@ -188,6 +181,7 @@ void akit_pick_place::generateGrasps(geometry_msgs::Pose block_pose_, double blo
 
   if (!sideGrasps){
 
+    side_grasps = false;
     //calculate length between base frame origin to object frame
     double line_length = sqrt(pow(box_in_chassis_frame.pose.position.x,2)+pow(box_in_chassis_frame.pose.position.y,2));
     double number_of_steps = 10.0;
@@ -277,6 +271,7 @@ void akit_pick_place::generateGrasps(geometry_msgs::Pose cuboid_pose_, double cu
 
   if(!sideGrasps){
 
+    side_grasps = false;
     //calculate length between base frame origin to object frame
     double line_length = sqrt(pow(cuboid_in_chassis_frame.pose.position.x,2)+pow(cuboid_in_chassis_frame.pose.position.y,2));
     double number_of_steps = 10.0;
@@ -379,6 +374,7 @@ void akit_pick_place::generateGrasps(geometry_msgs::Pose cylinder_pose_, double 
 
   if (!sideGrasps){
 
+    side_grasps = false;
     //calculate length between base frame origin to object frame
     double line_length = sqrt(pow(cylinder_in_chassis_frame.pose.position.x,2)+pow(cylinder_in_chassis_frame.pose.position.y,2));
     double number_of_steps = 10.0;
@@ -1093,8 +1089,26 @@ bool akit_pick_place::pick(std::string object_id, bool new_grasp_generation){ //
     exit(1);
   }*/
 
+  //get approach motion parameters
+  std::string axis;
+  bool direction;
+
+  if (!nh.hasParam("/approach_motion_axis")){
+    ROS_ERROR("approach_motion_axis parameter not loaded, did you load grasping yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/approach_motion_axis", axis);
+
+  if (!nh.hasParam("/direction_of_approach")){
+    ROS_ERROR("direction_of_approach parameter not loaded, did you load grasping yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/direction_of_approach", direction);
+
   int count = 0.0;
-  while (!this->executeAxisCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
+  while (!this->executeAxisCartesianMotion(direction, GRIPPER_JAW_LENGTH, axis.front())){
     this->rotateGripper(M_PI/6);
     count++;
     if (count == 6.0) {
@@ -1129,7 +1143,7 @@ bool akit_pick_place::pick(std::string object_id, bool new_grasp_generation){ //
   ros::Duration(1.0).sleep();
 
   //cartesian motion upwards (post-grasp position)
-  if (!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){
+  if (!this->executeAxisCartesianMotion(!direction, GRIPPER_JAW_LENGTH, axis.front())){
     ROS_ERROR("Failed to execute upwards cartesian motion");
     return false;
     exit(1);
@@ -1159,8 +1173,25 @@ bool akit_pick_place::place(std::string object_id){
   //clear grasp pose vector
   grasp_pose_vector.clear();
 
+  std::string axis;
+  bool direction;
+
+  if (!nh.hasParam("/approach_motion_axis")){
+    ROS_ERROR("approach_motion_axis parameter not loaded, did you load grasping yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/approach_motion_axis", axis);
+
+  if (!nh.hasParam("/direction_of_approach")){
+    ROS_ERROR("direction_of_approach parameter not loaded, did you load grasping yaml file ?");
+    exit(1);
+  }
+
+  nh.getParam("/direction_of_approach", direction);
+
   //cartesian motion downwards
-  if(!this->executeAxisCartesianMotion(DOWN, GRIPPER_JAW_LENGTH, 'z')){ //experiment and change gripper_jaw_length --> drop the object rather than place it
+  if(!this->executeAxisCartesianMotion(direction, GRIPPER_JAW_LENGTH, axis.front())){ //experiment and change gripper_jaw_length --> drop the object rather than place it
     ROS_ERROR("Failed to execute downwards cartesian motion");
     return false;
     exit(1);
@@ -1184,7 +1215,7 @@ bool akit_pick_place::place(std::string object_id){
   }
 
   //cartesian motion upwards
-  if(!this->executeAxisCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z')){
+  if(!this->executeAxisCartesianMotion(!direction, GRIPPER_JAW_LENGTH, axis.front())){
     ROS_ERROR("Failed to execute upwards cartesian motion");
     return false;
     exit(1);
@@ -1488,7 +1519,7 @@ bool akit_pick_place::attachTool(std::string tool_frame_id){ //change to tool fr
   visual_tools->prompt("proceed ? ");
 
   //execute cartesian motion in -x axis direction
-  this->executeAxisCartesianMotion(DOWN, distance_above_gripper + quickcoupler_x, 'x');
+  this->executeAxisCartesianMotion(false, distance_above_gripper + quickcoupler_x, 'x');
 
   //get current joint state
   akitState = akitGroup->getCurrentState();
@@ -1578,7 +1609,7 @@ bool akit_pick_place::detachTool(std::string tool_frame_id){
   }
 
   //execute cartesian motion in +x axis direction
-  this->executeAxisCartesianMotion(UP, distance_above_gripper + quickcoupler_x, 'x');
+  this->executeAxisCartesianMotion(true, distance_above_gripper + quickcoupler_x, 'x');
 
    ROS_INFO_STREAM(tool_frame_id << " Detached Successfully");
 }

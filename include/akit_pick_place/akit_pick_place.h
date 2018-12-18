@@ -21,10 +21,6 @@
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 
-
-#define UP true
-#define DOWN false
-
 typedef std::map<std::string, moveit_msgs::CollisionObject> CollisionObjectsMap;
 typedef std::map<std::string, moveit_msgs::AttachedCollisionObject> AttachedCollisionObjectsMap;
 
@@ -61,7 +57,7 @@ private:
   bool gripperSuccess;
   bool akitSuccess;
   bool FromGraspGenerator;
-  bool side_grasps;
+  bool side_grasps = true;
 
   //akit pick place
   geometry_msgs::Pose pre_grasp_pose;
