@@ -99,6 +99,15 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
   std::map<std::string, moveit_msgs::CollisionObject>::iterator object_it = object.find(object_id);
 
   double p = 0.65; //grasp starts near edge of object
+  double max_open_length;
+
+  //get max open length of gripper
+  if (!nh.hasParam("/max_open_length")){
+    ROS_WARN("max_open_length parameter (distance between gripper jaws when fully opened) "
+              "not loaded, did you load grasping parameters .yaml file ?");
+  }
+
+  nh.getParam("/max_open_length", max_open_length);
 
   //start grasp generation in XZ plane
 
@@ -116,13 +125,15 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
 
   graspXZ = grasp_xz;
 
-  for (double i = - (object_it->second.primitives[0].dimensions[2] / 2) * p;
-               i <= (object_it->second.primitives[0].dimensions[2] / 2) * p;
-              i += (object_it->second.primitives[0].dimensions[2] / 10) * p){
+  if (object_it->second.primitives[0].dimensions[1] <= max_open_length){
+    for (double i = - (object_it->second.primitives[0].dimensions[2] / 2) * p;
+                 i <= (object_it->second.primitives[0].dimensions[2] / 2) * p;
+                i += (object_it->second.primitives[0].dimensions[2] / 10) * p){
 
-    graspXZ.pose.position.z = i;
-    grasps.push_back(graspXZ);
+      graspXZ.pose.position.z = i;
+      grasps.push_back(graspXZ);
 
+    }
   }
 
   //start rotating around z-axis os the object
@@ -134,19 +145,22 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
   graspYZ.header.frame_id = object_it->second.id;
   graspYZ.pose.position.x = 0.0;
   graspYZ.pose.position.y = - (object_it->second.primitives[0].dimensions[0] / 2) - GRIPPER_LENGTH;
+  graspYZ.pose.position.z = 0.0;
   graspYZ.pose.orientation.x = w.getX();
   graspYZ.pose.orientation.y = w.getY();
   graspYZ.pose.orientation.z = w.getZ();
   graspYZ.pose.orientation.w = w.getW();
 
-  for (double i = - (object_it->second.primitives[0].dimensions[2] / 2) * p;
-               i <= (object_it->second.primitives[0].dimensions[2] / 2) * p;
-              i += (object_it->second.primitives[0].dimensions[2] / 10) * p){
+  if (object_it->second.primitives[0].dimensions[0] <= max_open_length){
+    for (double i = - (object_it->second.primitives[0].dimensions[2] / 2) * p;
+                 i <= (object_it->second.primitives[0].dimensions[2] / 2) * p;
+                i += (object_it->second.primitives[0].dimensions[2] / 10) * p){
 
-    graspYZ.pose.position.z = i;
-    grasps.push_back(graspYZ);
-
+      graspYZ.pose.position.z = i;
+      grasps.push_back(graspYZ);
+    }
   }
+
   //rotate again around z-axis
   tf::Quaternion e =  rotateZ(graspYZ, angle);
   graspXZ.pose.position.x *= -1;
@@ -155,13 +169,14 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
   graspXZ.pose.orientation.z = e.getZ();
   graspXZ.pose.orientation.w = e.getW();
 
-  for (double i = - (object_it->second.primitives[0].dimensions[2] / 2) * p;
-               i <= (object_it->second.primitives[0].dimensions[2] / 2) * p;
-              i += (object_it->second.primitives[0].dimensions[2] / 10) * p){
+  if (object_it->second.primitives[0].dimensions[1] <= max_open_length){
+    for (double i = - (object_it->second.primitives[0].dimensions[2] / 2) * p;
+                 i <= (object_it->second.primitives[0].dimensions[2] / 2) * p;
+                i += (object_it->second.primitives[0].dimensions[2] / 10) * p){
 
-    graspXZ.pose.position.z = i;
-    grasps.push_back(graspXZ);
-
+      graspXZ.pose.position.z = i;
+      grasps.push_back(graspXZ);
+    }
   }
 
   //rotate again around z-axis
@@ -172,14 +187,17 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
   graspYZ.pose.orientation.z = r.getZ();
   graspYZ.pose.orientation.w = r.getW();
 
-  for (double i = - (object_it->second.primitives[0].dimensions[2] / 2) * p;
-               i <= (object_it->second.primitives[0].dimensions[2] / 2) * p;
-              i += (object_it->second.primitives[0].dimensions[2] / 10) * p){
+  if (object_it->second.primitives[0].dimensions[0] <= max_open_length){
+    for (double i = - (object_it->second.primitives[0].dimensions[2] / 2) * p;
+                 i <= (object_it->second.primitives[0].dimensions[2] / 2) * p;
+                i += (object_it->second.primitives[0].dimensions[2] / 10) * p){
 
-    graspYZ.pose.position.z = i;
-    grasps.push_back(graspYZ);
+      graspYZ.pose.position.z = i;
+      grasps.push_back(graspYZ);
 
+    }
   }
+
 
   //rotate first grasp point around y-axis of the object
   tf::Quaternion t =  rotateY(grasp_xz, angle);
@@ -193,13 +211,15 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
   graspXY.pose.orientation.z = t.getZ();
   graspXY.pose.orientation.w = t.getW();
 
-  for (double i = - (object_it->second.primitives[0].dimensions[0] / 2) * p;
-               i <= (object_it->second.primitives[0].dimensions[0] / 2) * p;
-              i += (object_it->second.primitives[0].dimensions[0] / 10) * p){
+  if (object_it->second.primitives[0].dimensions[1] <= max_open_length){
+    for (double i = - (object_it->second.primitives[0].dimensions[0] / 2) * p;
+                 i <= (object_it->second.primitives[0].dimensions[0] / 2) * p;
+                i += (object_it->second.primitives[0].dimensions[0] / 10) * p){
 
-    graspXY.pose.position.x = i;
-    grasps.push_back(graspXY);
+      graspXY.pose.position.x = i;
+      grasps.push_back(graspXY);
 
+    }
   }
 
   //rotate around z axis
@@ -210,13 +230,14 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
   graspXY.pose.orientation.z = y.getZ();
   graspXY.pose.orientation.w = y.getW();
 
-  for (double i = - (object_it->second.primitives[0].dimensions[1] / 2) * p;
-               i <= (object_it->second.primitives[0].dimensions[1] / 2) * p;
-              i += (object_it->second.primitives[0].dimensions[1] / 10) * p){
+  if (object_it->second.primitives[0].dimensions[0] <= max_open_length){
+    for (double i = - (object_it->second.primitives[0].dimensions[1] / 2) * p;
+                 i <= (object_it->second.primitives[0].dimensions[1] / 2) * p;
+                i += (object_it->second.primitives[0].dimensions[1] / 10) * p){
 
-    graspXY.pose.position.y = i;
-    grasps.push_back(graspXY);
-
+      graspXY.pose.position.y = i;
+      grasps.push_back(graspXY);
+    }
   }
 
   //flip
@@ -231,13 +252,14 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
   graspXY.pose.orientation.z = u.getZ();
   graspXY.pose.orientation.w = u.getW();
 
-  for (double i = - (object_it->second.primitives[0].dimensions[0] / 2) * p;
-               i <= (object_it->second.primitives[0].dimensions[0] / 2) * p;
-              i += (object_it->second.primitives[0].dimensions[0] / 10) * p){
+  if (object_it->second.primitives[0].dimensions[1] <= max_open_length){
+    for (double i = - (object_it->second.primitives[0].dimensions[0] / 2) * p;
+                 i <= (object_it->second.primitives[0].dimensions[0] / 2) * p;
+                i += (object_it->second.primitives[0].dimensions[0] / 10) * p){
 
-    graspXY.pose.position.x = i;
-    grasps.push_back(graspXY);
-
+      graspXY.pose.position.x = i;
+      grasps.push_back(graspXY);
+    }
   }
 
   //rotate around z axis
@@ -248,11 +270,13 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
   graspXY.pose.orientation.z = o.getZ();
   graspXY.pose.orientation.w = o.getW();
 
-  for (double i = - (object_it->second.primitives[0].dimensions[1] / 2) * p;
-               i <= (object_it->second.primitives[0].dimensions[1] / 2) * p;
-              i += (object_it->second.primitives[0].dimensions[1] / 10) * p){
-    graspXY.pose.position.y = i;
-    grasps.push_back(graspXY);
+  if (object_it->second.primitives[0].dimensions[0] <= max_open_length){
+    for (double i = - (object_it->second.primitives[0].dimensions[1] / 2) * p;
+                 i <= (object_it->second.primitives[0].dimensions[1] / 2) * p;
+                i += (object_it->second.primitives[0].dimensions[1] / 10) * p){
+      graspXY.pose.position.y = i;
+      grasps.push_back(graspXY);
+    }
   }
 
   if (visualize_grasps){
