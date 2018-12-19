@@ -305,8 +305,9 @@ public:
   tf::Quaternion rotateY(geometry_msgs::PoseStamped pose, double angle);
   tf::Quaternion rotateZ(geometry_msgs::PoseStamped pose, double angle);
   std::vector<geometry_msgs::PoseStamped> generateGrasps(std::string object, bool visualize_grasps = true);
-  std::vector<geometry_msgs::PoseStamped>transformGrasps(std::vector<geometry_msgs::PoseStamped> grasps);
+  void transformGrasps(std::vector<geometry_msgs::PoseStamped> &grasps);
   void visualizeGraspPose(std::vector<geometry_msgs::PoseStamped> grasps);
+  void scoreGrasps(std::vector<geometry_msgs::PoseStamped> &grasps);
 
 };
 

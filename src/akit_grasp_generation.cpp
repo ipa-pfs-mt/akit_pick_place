@@ -288,17 +288,16 @@ std::vector<geometry_msgs::PoseStamped> akit_pick_place::generateGrasps(std::str
 }
 
 //transforms grasps to base frame for motion planning
-std::vector<geometry_msgs::PoseStamped> akit_pick_place::transformGrasps(std::vector<geometry_msgs::PoseStamped> grasps){
+void akit_pick_place::transformGrasps(std::vector<geometry_msgs::PoseStamped> &grasps){
 
-  std::vector<geometry_msgs::PoseStamped> transformed_grasps(grasps.begin(), grasps.end());
+  //std::vector<geometry_msgs::PoseStamped> transformed_grasps(grasps.begin(), grasps.end());
   for (std::size_t i = 0; i < grasps.size(); ++i){
 
     //transform from object frame to base frame, wait to avoid time difference exceptions
     transform_listener.waitForTransform(BASE_LINK, grasps[0].header.frame_id, ros::Time::now(), ros::Duration(0.1));
-    transform_listener.transformPose(BASE_LINK,ros::Time(0), grasps[i], grasps[0].header.frame_id, transformed_grasps[i]);
-  }
+    transform_listener.transformPose(BASE_LINK,ros::Time(0), grasps[i], grasps[0].header.frame_id, grasps[i]);
 
-  return transformed_grasps;
+  }
 }
 
 void akit_pick_place::visualizeGraspPose(std::vector<geometry_msgs::PoseStamped> grasps){
@@ -312,3 +311,26 @@ void akit_pick_place::visualizeGraspPose(std::vector<geometry_msgs::PoseStamped>
   pose_pub.publish(poseArray);
 }
 
+void akit_pick_place::scoreGrasps(std::vector<geometry_msgs::PoseStamped> &grasps){
+
+  //calculate euclidean distance between each grasp pose and the object frame origin
+
+  //object frame origin is 0 0 0, grasps in object frame
+
+  std::multimap<double, geometry_msgs::PoseStamped> score_map; //sorted container with multi key values
+  std::multimap<double, geometry_msgs::PoseStamped>::iterator it;
+
+  for (std::size_t i = 0; i < grasps.size(); ++i){
+
+    double euclidean_distance = std::sqrt(std::pow(grasps[i].pose.position.x,2) + std::pow(grasps[i].pose.position.y,2)
+                                                              + std::pow(grasps[i].pose.position.z,2));
+    score_map.insert({euclidean_distance, grasps[i]});
+
+  }
+
+  grasps.clear();
+
+  for (it = score_map.begin(); it != score_map.end(); ++it){
+    grasps.push_back(it->second);
+  }
+}

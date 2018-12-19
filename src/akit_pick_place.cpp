@@ -678,44 +678,44 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
   akitState = akitGroup->getCurrentState();
   akitGroup->setStartState(*akitState);
 
-  //UP = true, DOWN = false
-  geometry_msgs::PoseStamped pose_in_base_frame, pose_in_quickcoupler_frame;
+  //transformation
+  geometry_msgs::PoseStamped pose_in_base_frame, pose_in_eef_parent_frame;
 
   pose_in_base_frame.pose = akitGroup->getCurrentPose(EEF_PARENT_LINK).pose; //chassis frame
-  pose_in_base_frame.header.frame_id = BASE_LINK; //pose stamped
+  pose_in_base_frame.header.frame_id = BASE_LINK;
 
   //transform from base link frame to quickcoupler frame, wait to avoid time difference exceptions
   transform_listener.waitForTransform(EEF_PARENT_LINK, BASE_LINK, ros::Time::now(), ros::Duration(0.1));
-  transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_base_frame, BASE_LINK, pose_in_quickcoupler_frame);
+  transform_listener.transformPose(EEF_PARENT_LINK,ros::Time(0), pose_in_base_frame, BASE_LINK, pose_in_eef_parent_frame);
 
   if (!direction){        //downwards cartesian motion in quickcoupler frame
     switch (axis){
     case 'x':
-      pose_in_quickcoupler_frame.pose.position.x -= cartesian_distance;
+      pose_in_eef_parent_frame.pose.position.x -= cartesian_distance;
       break;
     case 'y':
-      pose_in_quickcoupler_frame.pose.position.y -= cartesian_distance;
+      pose_in_eef_parent_frame.pose.position.y -= cartesian_distance;
       break;
     case 'z':
-      pose_in_quickcoupler_frame.pose.position.z -= cartesian_distance;
+      pose_in_eef_parent_frame.pose.position.z -= cartesian_distance;
       break;
     }
   } else {                //upwards cartesian motion in quickcoupler frame
     switch (axis){
     case 'x':
-      pose_in_quickcoupler_frame.pose.position.x += cartesian_distance;
+      pose_in_eef_parent_frame.pose.position.x += cartesian_distance;
       break;
     case 'y':
-      pose_in_quickcoupler_frame.pose.position.y += cartesian_distance;
+      pose_in_eef_parent_frame.pose.position.y += cartesian_distance;
       break;
     case 'z':
-      pose_in_quickcoupler_frame.pose.position.z += cartesian_distance;
+      pose_in_eef_parent_frame.pose.position.z += cartesian_distance;
       break;
     }
   }
   //transform back to base frame, wait to avoid time difference exceptions
   transform_listener.waitForTransform(BASE_LINK, EEF_PARENT_LINK, ros::Time::now(), ros::Duration(0.1));
-  transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_quickcoupler_frame, EEF_PARENT_LINK, pose_in_base_frame);
+  transform_listener.transformPose(BASE_LINK,ros::Time(0), pose_in_eef_parent_frame, EEF_PARENT_LINK, pose_in_base_frame);
 
   waypoints[0] = pose_in_base_frame.pose;
   const double jump_threshold = 0.0;
@@ -1036,14 +1036,19 @@ bool akit_pick_place::pick(std::string object_id, bool new_grasp_generation){ //
   //move from home position to pre-grasp position
   if (new_grasp_generation){
 
+      //score grasps
+      ROS_INFO_STREAM("Sorting grasps according to score values");
+      this->scoreGrasps(grasps);
+
       //transform grasps to base link frame
       ROS_INFO_STREAM("Transforming grasps to base link frame");
-      std::vector<geometry_msgs::PoseStamped> transformed_grasps = this->transformGrasps(grasps);
+      this->transformGrasps(grasps);
+
       std::vector<geometry_msgs::Pose> poses;
       poses.clear();
 
-      for (std::size_t i = 0; i < transformed_grasps.size(); ++i){
-          poses.push_back(transformed_grasps[i].pose);
+      for (std::size_t i = 0; i < grasps.size(); ++i){
+          poses.push_back(grasps[i].pose);
       }
 
       //loop through all grasp poses
