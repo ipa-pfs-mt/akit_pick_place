@@ -1,5 +1,0 @@
-<launch>
-
-	<test pkg="akit_pick_place" type="test_akit_pick_place" test-name="akit_pick_place" name="test_akit_pick_place"/>
-
-</launch>
