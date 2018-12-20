@@ -1,14 +1,14 @@
 #include <akit_pick_place/akit_pick_place.h>
 
-int main(int argc, char **argv){
-
+int main(int argc, char** argv)
+{
   ros::init(argc, argv, "interactive_pick_test");
   ros::AsyncSpinner spinner(1);
   spinner.start();
 
   akit_pick_place akit;
 
-  //place location vector
+  // place location vector
   std::vector<geometry_msgs::Pose> place_locations_;
   geometry_msgs::Pose placeLocation1;
   placeLocation1.position.z = 0.17;

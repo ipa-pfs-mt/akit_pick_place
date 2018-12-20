@@ -2,8 +2,8 @@
 
 std::string BASE_LINK_FRAME = "root";
 
-int main(int argc, char **argv){
-
+int main(int argc, char** argv)
+{
   ros::init(argc, argv, "broadcaster");
   ros::AsyncSpinner spinner(1);
   spinner.start();
@@ -20,7 +20,7 @@ int main(int argc, char **argv){
   test_pose.pose.orientation.y = 0.707;
   test_pose.pose.orientation.z = 0.0;
 
-  panda.addCollisionBlock(test_pose.pose, "block", 0.05,0.05,0.15);
+  panda.addCollisionBlock(test_pose.pose, "block", 0.05, 0.05, 0.15);
 
   panda.broadcastFrame(test_pose, "block");
 }

@@ -3,9 +3,8 @@
 std::string BASE_LINK_FRAME = "root";
 std::string OBJECT_FRAME = "block";
 
-
-int main(int argc, char **argv){
-
+int main(int argc, char** argv)
+{
   ros::init(argc, argv, "grasp_config");
   ros::AsyncSpinner spinner(1);
   spinner.start();
@@ -29,10 +28,9 @@ int main(int argc, char **argv){
 
   ROS_INFO_STREAM("****************************************************************");
 
-  //transform object from world frame to gripper rotator frame, wait to avoid time difference exceptions
+  // transform object from world frame to gripper rotator frame, wait to avoid time difference exceptions
   transform_listener.waitForTransform(OBJECT_FRAME, BASE_LINK_FRAME, ros::Time::now(), ros::Duration(0.1));
-  transform_listener.transformPose(OBJECT_FRAME,ros::Time(0), eef_parent_link_pose, BASE_LINK_FRAME, block_frame);
-
+  transform_listener.transformPose(OBJECT_FRAME, ros::Time(0), eef_parent_link_pose, BASE_LINK_FRAME, block_frame);
 
   ROS_INFO_STREAM("Frame " << block_frame.header.frame_id);
   ROS_INFO_STREAM("x: " << block_frame.pose.position.x);
@@ -46,7 +44,3 @@ int main(int argc, char **argv){
   std::vector<geometry_msgs::PoseStamped> grasps = akit.generateGrasps("block");
   akit.visualizeGraspPose(grasps);
 }
-
-
-
-
