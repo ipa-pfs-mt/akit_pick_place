@@ -826,7 +826,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
   }
 }
 
-// executes first pose reached in input position vector
+// executes first pose reached in input pose vector
 bool akit_pick_place::planAndExecuteCartesianGoals(std::vector<geometry_msgs::Pose> poses, std::string pose)
 {
   // update start state to current state
