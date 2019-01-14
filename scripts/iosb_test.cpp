@@ -1,5 +1,13 @@
 #include <akit_pick_place/akit_pick_place.h>
 
+double cylinder_radius = 0.2;
+double cylinder_height = 0.5;
+std::string cylinder_name = "cyliner";
+
+double block_x = 0.35;
+double block_z = 0.75;
+std::string block_name = "block";
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "iosb_test");
@@ -8,6 +16,7 @@ int main(int argc, char** argv)
 
   akit_pick_place akit;
 
+ /*
   geometry_msgs::Pose working;
   working.position.x = 2.74662;
   working.position.y = -0.0353878;
@@ -28,17 +37,25 @@ int main(int argc, char** argv)
   test_poses.push_back(not_working2);
   test_poses.push_back(working);
 
+  std::string position = "pregrasp";
+
+*/
+
   geometry_msgs::Pose pose;
-  pose.orientation.w = 1.0;
-  pose.position.x = 3.0;
-  pose.position.y = 0.0;
-  pose.position.z = 0.17;
+  pose.position.x = 2.5;
+  pose.position.y = 1.0;
+  pose.position.z = 0.175;
+  pose.orientation.w = 0.707;
+  pose.orientation.x = 0.0;
+  pose.orientation.y = 0.707;
+  pose.orientation.z = 0.0;
 
-  // std::string position = "pregrasp";
+  geometry_msgs::Pose place_pose = pose;
+  place_pose.position.y = -1.0;
 
-  moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose, "cylinder", 0.5, 0.2);
+  /*moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose, cylinder_name, cylinder_height, cylinder_radius);
 
-  akit.generateGrasps(pose, 0.5, 0.2);
+  akit.generateGrasps(pose, cylinder_height, cylinder_radius);
 
   if (!akit.pick(cylinder))
   {
@@ -46,12 +63,27 @@ int main(int argc, char** argv)
     exit(1);
   }
 
-  geometry_msgs::Pose place_pose = pose;
-  place_pose.position.y = 1.5;
-
-  akit.generateGrasps(place_pose, 0.5, 0.2);
+  akit.generateGrasps(place_pose, cylinder_height, cylinder_radius);
 
   if (!akit.place(cylinder))
+  {
+    ROS_ERROR("Failed to place");
+    exit(1);
+  }*/
+
+  moveit_msgs::CollisionObject block = akit.addCollisionBlock(pose, block_name, block_x, block_x, block_z);
+
+  akit.generateGrasps(pose, block_x, block_x, block_z);
+
+  if (!akit.pick(block))
+  {
+    ROS_ERROR("Failed to pick");
+    exit(1);
+  }
+
+  akit.generateGrasps(place_pose, block_x, block_x, block_z);
+
+  if (!akit.place(block))
   {
     ROS_ERROR("Failed to place");
     exit(1);

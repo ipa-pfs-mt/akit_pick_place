@@ -854,7 +854,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
     exit(1);
   }
 
-  sleep(1.0);
+  sleep(2.0);
 
   if ((cartesian_path_msg.response.fraction * 100) >= 50.0)
   {
@@ -878,7 +878,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
 
     e1_trajectory_publisher.publish(traj_msg);
 
-    sleep(1.0);
+    sleep(2.0);
 
     // execute trajectory service parameters left empty
     moveit_msgs::ExecuteKnownTrajectory execute_traj_srv;
@@ -1423,6 +1423,9 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_)
   // give time for planning scene to process
   ros::Duration(1.0).sleep();
 
+  // temporary
+  visual_tools->prompt("when you want to open gripper press next");
+
   // opening gripper
   if (!this->openGripper())
   {
@@ -1431,8 +1434,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_)
     exit(1);
   }
 
-  // temporary
-  visual_tools->prompt("when the gripper is completely opened press next");
+  sleep(1.0);
 
   // cartesian motion upwards
   if (!this->executeAxisCartesianMotion(UP, GRIPPER_JAW_LENGTH, 'z'))

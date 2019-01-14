@@ -198,9 +198,6 @@ target_link_libraries(tutorial ${catkin_LIBRARIES})
 add_executable(iosb_test scripts/iosb_test.cpp src/akit_pick_place.cpp)
 target_link_libraries(iosb_test ${catkin_LIBRARIES})
 
-add_executable(test scripts/test.py src/akit_pick_place.cpp)
-target_link_libraries(test ${catkin_LIBRARIES})
-
 target_link_libraries(akit_pick_place ${catkin_LIBRARIES})
 
 
