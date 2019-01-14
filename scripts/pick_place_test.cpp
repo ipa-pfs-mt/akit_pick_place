@@ -6,18 +6,18 @@ const double BLOCK_SIZE = 0.35;
 const double CYLINDER_HEIGHT = 0.35;
 const double CYLINDER_RADIUS = 0.15;
 
-int main(int argc, char**argv){
-
+int main(int argc, char** argv)
+{
   ros::init(argc, argv, "pick_place_test");
   ros::AsyncSpinner spinner(1);
   spinner.start();
   akit_pick_place akit;
-  //akit.setWorldFrame("world");
+  // akit.setWorldFrame("world");
 
-  //std::string BASE_LINK = akit.getBaseLink();
+  // std::string BASE_LINK = akit.getBaseLink();
   moveit::planning_interface::PlanningSceneInterface planningSceneInterface;
 
-  //create collision object
+  // create collision object
   moveit_msgs::CollisionObject Block;
   Block.id = BLOCK_NAME;
   Block.header.frame_id = "odom_combined";
@@ -37,7 +37,7 @@ int main(int argc, char**argv){
   cprimitive.dimensions[0] = CYLINDER_HEIGHT;
   cprimitive.dimensions[1] = CYLINDER_RADIUS;
 
-  //create object pose
+  // create object pose
   geometry_msgs::Pose blockPose;
   blockPose.position.x = 2.0;
   blockPose.position.y = 2.5;
@@ -57,7 +57,7 @@ int main(int argc, char**argv){
   Cylinder.primitive_poses.push_back(blockPose);
 
   std::vector<moveit_msgs::CollisionObject> collisionObjects;
-  //collisionObjects.push_back(Block);
+  // collisionObjects.push_back(Block);
   collisionObjects.push_back(Cylinder);
   ROS_INFO_STREAM("Adding Collision object to world");
   planningSceneInterface.addCollisionObjects(collisionObjects);
@@ -66,13 +66,13 @@ int main(int argc, char**argv){
   /*akit.generateGrasps(blockPose, BLOCK_SIZE);
   akit.pick(BLOCK_NAME);*/
 
-  akit.generateGrasps(blockPose,CYLINDER_HEIGHT,CYLINDER_RADIUS, true);
+  akit.generateGrasps(blockPose, CYLINDER_HEIGHT, CYLINDER_RADIUS, true);
   akit.pick(Cylinder);
 
   /*akit.generateGrasps(placePose, BLOCK_SIZE);
   akit.place(BLOCK_NAME);*/
 
-  akit.generateGrasps(placePose,CYLINDER_HEIGHT,CYLINDER_RADIUS, true);
+  akit.generateGrasps(placePose, CYLINDER_HEIGHT, CYLINDER_RADIUS, true);
   akit.place(Cylinder);
 
   return 0;

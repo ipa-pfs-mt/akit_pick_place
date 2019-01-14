@@ -4,19 +4,20 @@ static const std::string BASE_LINK = "chassis";
 const double CYLINDER_HEIGHT = 0.35;
 const double CYLINDER_RADIUS = 0.175;
 
-double fRand(double fMin, double fMax){ //make a new random number generator
+double fRand(double fMin, double fMax)
+{  // make a new random number generator
   double f = (double)rand() / RAND_MAX;
   return fMin + f * (fMax - fMin);
 }
 void generateRandomBlock(geometry_msgs::Pose& cylinder_pose)
 {
   // Position
-  cylinder_pose.position.x = fRand(-3.0,3.0);
-  cylinder_pose.position.y = fRand(-2.2,-3.2);
+  cylinder_pose.position.x = fRand(-3.0, 3.0);
+  cylinder_pose.position.y = fRand(-2.2, -3.2);
   cylinder_pose.position.z = 0.17;
 
   // Orientation
-  double angle = M_PI * fRand(0.1,1);
+  double angle = M_PI * fRand(0.1, 1);
   Eigen::Quaterniond quat(Eigen::AngleAxis<double>(double(angle), Eigen::Vector3d::UnitZ()));
   cylinder_pose.orientation.x = quat.x();
   cylinder_pose.orientation.y = quat.y();
@@ -25,7 +26,10 @@ void generateRandomBlock(geometry_msgs::Pose& cylinder_pose)
 }
 
 moveit_msgs::CollisionObject createCollisionCylinder(geometry_msgs::Pose cylinder_pose,
-                             std::string cylinder_name, double cylinder_height, double cylinder_radius){
+                                                     std::string cylinder_name,
+                                                     double cylinder_height,
+                                                     double cylinder_radius)
+{
   moveit_msgs::CollisionObject cylinder;
   cylinder.id = cylinder_name;
   cylinder.header.stamp = ros::Time::now();
@@ -43,8 +47,8 @@ moveit_msgs::CollisionObject createCollisionCylinder(geometry_msgs::Pose cylinde
   return cylinder;
 }
 
-int main(int argc, char**argv){
-
+int main(int argc, char** argv)
+{
   ros::init(argc, argv, "random_pick_place_arrange_test");
   ros::AsyncSpinner spinner(1);
   spinner.start();
@@ -52,7 +56,7 @@ int main(int argc, char**argv){
   moveit::planning_interface::PlanningSceneInterface planningSceneInterface;
   akit_pick_place akit;
 
-  //specify place position such that 2 cylinders above each other for 5 rows
+  // specify place position such that 2 cylinders above each other for 5 rows
 
   std::vector<geometry_msgs::Pose> place_locations_;
   geometry_msgs::Pose placeLocation1;
@@ -87,32 +91,35 @@ int main(int argc, char**argv){
   place_locations_.push_back(placeLocation8);
   place_locations_.push_back(placeLocation9);
 
-
-  //generate 10 random position cylinders
+  // generate 10 random position cylinders
   std::vector<moveit_msgs::CollisionObject> collisionObjects(1);
 
-  for (int i = 0; i < place_locations_.size(); ++i){
+  for (int i = 0; i < place_locations_.size(); ++i)
+  {
     geometry_msgs::Pose cylinder_pose;
     generateRandomBlock(cylinder_pose);
-    moveit_msgs::CollisionObject cylinder = createCollisionCylinder(cylinder_pose, "cylinder" + std::to_string(i),
-                                                                    CYLINDER_HEIGHT,CYLINDER_RADIUS);
+    moveit_msgs::CollisionObject cylinder =
+        createCollisionCylinder(cylinder_pose, "cylinder" + std::to_string(i), CYLINDER_HEIGHT, CYLINDER_RADIUS);
     collisionObjects[0] = cylinder;
     ROS_INFO_STREAM("Adding Collision object to world");
     planningSceneInterface.addCollisionObjects(collisionObjects);
 
     akit.generateGrasps(cylinder_pose, CYLINDER_HEIGHT, CYLINDER_RADIUS);
-    if(!akit.pick(cylinder)){
+    if (!akit.pick(cylinder))
+    {
       ROS_ERROR("Failed to pick");
       continue;
-    } else {
-       akit.generateGrasps(place_locations_[i], CYLINDER_HEIGHT, CYLINDER_RADIUS);
-       if (!akit.place(cylinder)){
-         ROS_ERROR("Failed to place");
-         continue;
-       }
     }
- }
+    else
+    {
+      akit.generateGrasps(place_locations_[i], CYLINDER_HEIGHT, CYLINDER_RADIUS);
+      if (!akit.place(cylinder))
+      {
+        ROS_ERROR("Failed to place");
+        continue;
+      }
+    }
+  }
 
- return 0;
-
+  return 0;
 }

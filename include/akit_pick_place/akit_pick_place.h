@@ -31,7 +31,6 @@
 #include <e1_interface/E1Command.h>
 #include <std_srvs/Empty.h>
 
-
 #define UP true
 #define DOWN false
 
@@ -43,11 +42,10 @@ typedef std::map<std::string, moveit_msgs::AttachedCollisionObject> AttachedColl
  * interactive pick and place methods, collision objects publishing methods, tool attachement and detachments methods.
  */
 
-class akit_pick_place {
-
+class akit_pick_place
+{
 private:
-
-  //ros
+  // ros
   ros::NodeHandle nh;
   ros::Publisher marker_pub;
   ros::Subscriber marker_sub;
@@ -56,7 +54,7 @@ private:
   ros::ServiceClient get_planning_scene_client;
   tf::TransformListener transform_listener;
 
-  //akit stuff
+  // akit stuff
   std::string WORLD_FRAME;
   std::string BASE_LINK;
   std::string GRIPPER_FRAME;
@@ -64,18 +62,17 @@ private:
   std::string BUCKET_FRAME;
   std::string PLANNING_GROUP;
   std::string EEF_PARENT_LINK;
-  double GRIPPER_LENGTH;   //for grasp generation
-  double GRIPPER_JAW_LENGTH; //for cartesian motion
+  double GRIPPER_LENGTH;      // for grasp generation
+  double GRIPPER_JAW_LENGTH;  // for cartesian motion
   double GRIPPER_SIDE_LENGTH;
   bool FromGraspGenerator;
   bool side_grasps;
 
-  //remove
+  // remove
   bool gripperSuccess;
   bool akitSuccess;
 
-
-  //akit pick place
+  // akit pick place
   geometry_msgs::Pose pre_grasp_pose;
   geometry_msgs::Pose pre_place_pose;
   moveit_msgs::RobotTrajectory trajectory;
@@ -86,11 +83,11 @@ private:
   static geometry_msgs::Pose interactive_pose;
   static std::string interactive_name;
 
-  visualization_msgs::Marker marker;   //marker for grasp points
+  visualization_msgs::Marker marker;  // marker for grasp points
 
-  //remove
-  moveit::planning_interface::MoveGroupInterface *akitGroup;
-  moveit::planning_interface::MoveGroupInterface *gripperGroup;
+  // remove
+  moveit::planning_interface::MoveGroupInterface* akitGroup;
+  moveit::planning_interface::MoveGroupInterface* gripperGroup;
   moveit::planning_interface::PlanningSceneInterface planningSceneInterface;
   moveit::planning_interface::MoveGroupInterface::Plan MotionPlan;
   moveit::planning_interface::MoveGroupInterface::Plan gripperMotionPlan;
@@ -98,13 +95,13 @@ private:
   moveit::core::RobotStatePtr gripperState;
   moveit::core::RobotStatePtr akitState;
 
-  //MoveIt! stuff
+  // MoveIt! stuff
   moveit_msgs::PlanningScene planningSceneMsg;
   moveit_msgs::ApplyPlanningScene planningSceneSrv;
   std::vector<double> gripperJointPositions;
   std::vector<double> akitJointPositions;
-  const robot_state::JointModelGroup *akitJointModelGroup;
-  const robot_state::JointModelGroup *gripperJointModelGroup;
+  const robot_state::JointModelGroup* akitJointModelGroup;
+  const robot_state::JointModelGroup* gripperJointModelGroup;
   robot_model_loader::RobotModelLoaderPtr robotModelLoader;
   robot_model::RobotModelPtr robotModelPtr;
   planning_scene::PlanningScenePtr planningScenePtr;
@@ -112,7 +109,7 @@ private:
   moveit_msgs::ApplyPlanningScene planning_scene_srv;
   collision_detection::AllowedCollisionMatrix acm;
 
-  //IOSB stuff
+  // IOSB stuff
   ros::Publisher e1_gripper_pub;
   ros::ServiceClient e1_set_goal_client;
   ros::ServiceClient e1_go_to_goal_client;
@@ -124,14 +121,15 @@ private:
   ros::ServiceClient e1_clear_traj_client;
   sensor_msgs::JointState e1_joint_states;
 
-  //interactive markers
+  // interactive markers
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server;
   /**
-  * @brief feedback function required for interactive marker control, this function is not used by user, passed internally as a pointer.
+  * @brief feedback function required for interactive marker control, this function is not used by user, passed
+  * internally as a pointer.
   * @param feedback interactive marker mouse click feedback.
   * @return stores marker pose and name.
   */
-  static void processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
+  static void processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
 
   /**
   * @brief Adds interactive marker with the given pose and shape.
@@ -148,12 +146,12 @@ private:
   * @param color is the color of the published trajectory.
   */
   void displayTrajectory(moveit::planning_interface::MoveGroupInterface::Plan motion_plan,
-                               geometry_msgs::Pose axis_pose, std::string axis_name,
-                               rviz_visual_tools::colors color);
+                         geometry_msgs::Pose axis_pose,
+                         std::string axis_name,
+                         rviz_visual_tools::colors color);
 
 public:
-
-  //constructors
+  // constructors
   /**
    * @brief akit_pick_place default constructor containing all necessary values and frame names for A-Kit
    *  parameters filled in initialization.yaml file
@@ -161,7 +159,7 @@ public:
   akit_pick_place();
   ~akit_pick_place();
 
-  //setters
+  // setters
   /**
    * @brief setPreGraspPose for manual grasp pose setting instead of the grasp pose generator
    * @param preGraspPose is the geometry_msgs::Pose message provided by user
@@ -181,7 +179,7 @@ public:
    */
   void jointStatesCallback(const sensor_msgs::JointState joint_states_msg);
 
-  //akit methods
+  // akit methods
   /**
    * @brief generateGrasps Grasp Pose generator for cubes, generates grasp poses for cubes pick and place pipeline
    * @param block_pose_ a geometry_msgs::Pose message corresponding to the pose of the cube
@@ -189,7 +187,8 @@ public:
    * @param sideGrasps bool for side grasp generation. true --> generate side grasps
    * @param visualize bool for visualising grasp poses
    */
-  void generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool sideGrasps = false, bool visualize = true);
+  void
+  generateGrasps(geometry_msgs::Pose block_pose_, double block_size_, bool sideGrasps = false, bool visualize = true);
   /**
    * @brief generateGrasps Grasp Pose generator for cubes, generates grasp poses for cylinders pick and place pipeline
    * @param cylinder_pose_ a geometry_msgs::Pose message corresponding to the pose of the cylinder
@@ -198,7 +197,11 @@ public:
    * @param sideGrasps bool for side grasp generation. true --> generate side grasps
    * @param visualize bool for visualising grasp poses
    */
-  void generateGrasps(geometry_msgs::Pose cylinder_pose_, double cylinder_height_, double cylinder_radius_,bool sideGrasps = false, bool visualize = true);
+  void generateGrasps(geometry_msgs::Pose cylinder_pose_,
+                      double cylinder_height_,
+                      double cylinder_radius_,
+                      bool sideGrasps = false,
+                      bool visualize = true);
   /**
    * @brief generateGrasps Grasp Pose generator for cubes, generates grasp poses for cuboids pick and place pipeline
    * @param cuboid_pose_ a geometry_msgs::Pose message corresponding to the pose of the cuboid
@@ -208,7 +211,12 @@ public:
    * @param sideGrasps value of cuboid first side length
    * @param visualize value of cuboid first side length
    */
-  void generateGrasps(geometry_msgs::Pose cuboid_pose_, double cuboid_x_, double cuboid_y_, double cuboid_z_,bool sideGrasps = false, bool visualize = true);
+  void generateGrasps(geometry_msgs::Pose cuboid_pose_,
+                      double cuboid_x_,
+                      double cuboid_y_,
+                      double cuboid_z_,
+                      bool sideGrasps = false,
+                      bool visualize = true);
   /**
    * @brief visualizeGrasps publishes visualization messages to RViz
    * @param points a vector containing geometry_msgs::Pose messages to be published
@@ -299,14 +307,15 @@ public:
    * @return true if procedure succeeds
    */
   bool place(moveit_msgs::CollisionObject object_);
-   /**
-   * @brief interactive_pick_place is the  pick and place routine using interactive markers
-   * @param place_positions vector containing geometry_msgs::Pose messages for place locations
-   * @return true if procedure succeeds
-   */
+  /**
+  * @brief interactive_pick_place is the  pick and place routine using interactive markers
+  * @param place_positions vector containing geometry_msgs::Pose messages for place locations
+  * @return true if procedure succeeds
+  */
   bool interactive_pick_place(std::vector<geometry_msgs::Pose> place_positions);
   /**
-   * @brief addInteractiveMarkers uses addInteractiveMarker method to publish interactive markers over all collision objects
+   * @brief addInteractiveMarkers uses addInteractiveMarker method to publish interactive markers over all collision
+   * objects
    */
   void addInteractiveMarkers();
   /**
@@ -333,7 +342,10 @@ public:
    * @param cylinder_radius value of cylinder radius
    * @return the object as moveit_msgs::CollisionObject message
    */
-  moveit_msgs::CollisionObject addCollisionCylinder(geometry_msgs::Pose cylinder_pose,std::string cylinder_name, double cylinder_height, double cylinder_radius);
+  moveit_msgs::CollisionObject addCollisionCylinder(geometry_msgs::Pose cylinder_pose,
+                                                    std::string cylinder_name,
+                                                    double cylinder_height,
+                                                    double cylinder_radius);
   /**
    * @brief addCollisionBlock publishes block to planning scene
    * @param block_pose a geometry_msgs::Pose message of block
@@ -343,9 +355,13 @@ public:
    * @param block_size_z value of block z side length
    * @return the object as moveit_msgs::CollisionObject message
    */
-  moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose block_pose,std::string block_name,  double block_size_x, double block_size_y, double block_size_z);
+  moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose block_pose,
+                                                 std::string block_name,
+                                                 double block_size_x,
+                                                 double block_size_y,
+                                                 double block_size_z);
   CollisionObjectsMap getSceneCollisionObjects();
   AttachedCollisionObjectsMap getAttachedCollisionObjects();
 };
 
-#endif // AKIT_PICK_PLACE_H
+#endif  // AKIT_PICK_PLACE_H

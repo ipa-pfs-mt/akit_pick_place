@@ -8,18 +8,19 @@ double CUBOID_Z = 0.70;
 double CYLINDER_HEIGHT = 0.50;
 double CYLINDER_RADIUS = 0.175;
 
-double fRand(double fMin, double fMax){
+double fRand(double fMin, double fMax)
+{
   double f = (double)rand() / RAND_MAX;
   return fMin + f * (fMax - fMin);
 }
 
-int main(int argc, char **argv){
-
+int main(int argc, char** argv)
+{
   ros::init(argc, argv, "collision_experiment_2");
   ros::AsyncSpinner spinner(1);
   spinner.start();
   akit_pick_place akit;
-  //akit.setPlannerID("LBKPIECEkConfigDefault");
+  // akit.setPlannerID("LBKPIECEkConfigDefault");
 
   geometry_msgs::Pose barrierPose3;
   barrierPose3.position.x = 1.5;
@@ -39,12 +40,13 @@ int main(int argc, char **argv){
   sleep(1.0);
   akit.addGround();
 
-  for (int i = 0; i < 100; ++i){
-    tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0,2*M_PI),0.0,fRand(0,2*M_PI));
+  for (int i = 0; i < 100; ++i)
+  {
+    tf::Quaternion q = tf::createQuaternionFromRPY(fRand(0.0, 2 * M_PI), 0.0, fRand(0, 2 * M_PI));
 
     geometry_msgs::Pose pose;
-    pose.position.x = fRand(-2.0,2.0);
-    pose.position.y = fRand(2.2,3.0);
+    pose.position.x = fRand(-2.0, 2.0);
+    pose.position.y = fRand(2.2, 3.0);
     pose.position.z = 0.35;
     pose.orientation.w = q[0];
     pose.orientation.x = q[1];
@@ -58,15 +60,17 @@ int main(int argc, char **argv){
     place.orientation.w = 1.0;
     place.orientation.x = place.orientation.y = place.orientation.z = 0.0;
 
-
-   moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose, "cylinder",CYLINDER_HEIGHT,CYLINDER_RADIUS);
-    akit.generateGrasps(pose,CYLINDER_HEIGHT,CYLINDER_RADIUS);
-    if(!akit.pick(cylinder)){
+    moveit_msgs::CollisionObject cylinder =
+        akit.addCollisionCylinder(pose, "cylinder", CYLINDER_HEIGHT, CYLINDER_RADIUS);
+    akit.generateGrasps(pose, CYLINDER_HEIGHT, CYLINDER_RADIUS);
+    if (!akit.pick(cylinder))
+    {
       ROS_ERROR("Failed to pick");
       continue;
     }
-    akit.generateGrasps(place,CYLINDER_HEIGHT,CYLINDER_RADIUS);
-    if(!akit.place(cylinder)){
+    akit.generateGrasps(place, CYLINDER_HEIGHT, CYLINDER_RADIUS);
+    if (!akit.place(cylinder))
+    {
       ROS_ERROR("Failed to place");
       continue;
     }

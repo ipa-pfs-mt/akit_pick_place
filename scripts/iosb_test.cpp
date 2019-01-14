@@ -1,7 +1,7 @@
 #include <akit_pick_place/akit_pick_place.h>
 
-int main(int argc, char **argv){
-
+int main(int argc, char** argv)
+{
   ros::init(argc, argv, "iosb_test");
   ros::AsyncSpinner spinner(1);
   spinner.start();
@@ -34,13 +34,14 @@ int main(int argc, char **argv){
   pose.position.y = 0.0;
   pose.position.z = 0.17;
 
-  //std::string position = "pregrasp";
+  // std::string position = "pregrasp";
 
-  moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose,"cylinder", 0.5,0.2);
+  moveit_msgs::CollisionObject cylinder = akit.addCollisionCylinder(pose, "cylinder", 0.5, 0.2);
 
-  akit.generateGrasps(pose, 0.5,0.2);
+  akit.generateGrasps(pose, 0.5, 0.2);
 
-  if(!akit.pick(cylinder)){
+  if (!akit.pick(cylinder))
+  {
     ROS_ERROR("Failed to pick");
     exit(1);
   }
@@ -48,9 +49,10 @@ int main(int argc, char **argv){
   geometry_msgs::Pose place_pose = pose;
   place_pose.position.y = 1.5;
 
-  akit.generateGrasps(place_pose,0.5,0.2);
+  akit.generateGrasps(place_pose, 0.5, 0.2);
 
-  if(!akit.place(cylinder)){
+  if (!akit.place(cylinder))
+  {
     ROS_ERROR("Failed to place");
     exit(1);
   }
@@ -79,15 +81,4 @@ int main(int argc, char **argv){
   sleep(1.0);
 
   akit.executeAxisCartesianMotion(true, 0.25 , 'z');*/
-
 }
-
-
-
-
-
-
-
-
-
-
