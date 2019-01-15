@@ -671,7 +671,7 @@ bool akit_pick_place::openGripper()
   gripper_command.stick_valve_opening = 0;
   gripper_command.bucket_valve_opening = 0;
   gripper_command.cabin_rotation_valve_opening = 0;
-  gripper_command.auxiliary_hydraulic_valve_opening = -500;  // open gripper to near max value (fixed)
+  gripper_command.auxiliary_hydraulic_valve_opening = -550;  // open gripper to near max value (fixed)
   gripper_command.third_control_circuit_valve_opening = 0;
   gripper_command.auxiliary_hydraulic_switch_valve = false;
 
@@ -691,7 +691,7 @@ bool akit_pick_place::openGripper()
 bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_)
 {
   // relate close gripper to the side lengths of the object --> gripper close angle is related to the minimum side
-  double max_open_length = 0.7;  // measured in Rviz
+  /*double max_open_length = 0.7;  // measured in Rviz
   double tolerance = 0.01;       // for better caging
   double min_side = object_.primitives[0].dimensions[0];
 
@@ -726,7 +726,37 @@ bool akit_pick_place::closeGripper(moveit_msgs::CollisionObject object_)
     gripperGroup->execute(gripperMotionPlan);
     ROS_INFO_STREAM("Gripper Motion Plan: " << (gripperSuccess ? "Closed gripper" : "FAILED TO CLOSE GRIPPER"));
   }
-  return (gripperSuccess ? true : false);
+  return (gripperSuccess ? true : false);*/
+
+  // temporary close gripper function until joint measurements is available in reality
+  e1_interface::E1Command gripper_command;
+  gripper_command.header.seq = 0;
+  gripper_command.header.stamp.sec = 0;
+  gripper_command.header.stamp.nsec = 0;
+  gripper_command.blade[0] = false;
+  gripper_command.blade[1] = false;
+  gripper_command.track_valve_opening[0] = 0;
+  gripper_command.track_valve_opening[1] = 0;
+  gripper_command.slewing_valve_opening = 0;
+  gripper_command.boom_valve_opening = 0;
+  gripper_command.stick_valve_opening = 0;
+  gripper_command.bucket_valve_opening = 0;
+  gripper_command.cabin_rotation_valve_opening = 0;
+  gripper_command.auxiliary_hydraulic_valve_opening = 500;  // close gripper to near max value (fixed)
+  gripper_command.third_control_circuit_valve_opening = 0;
+  gripper_command.auxiliary_hydraulic_switch_valve = false;
+
+  ros::Time start_time = ros::Time::now();
+  ros::Duration timeout(8.0);  // Timeout of 8 seconds
+  while (ros::Time::now() - start_time < timeout)
+  {
+    e1_gripper_pub.publish(gripper_command);
+    ros::Duration(0.05).sleep();
+  }
+  gripper_command.auxiliary_hydraulic_valve_opening = 0;
+  e1_gripper_pub.publish(gripper_command);
+  ROS_INFO_STREAM("Closed Gripper successfully");
+  return true;
 }
 
 void akit_pick_place::jointStatesCallback(const sensor_msgs::JointState joint_states_msg)
@@ -849,7 +879,7 @@ bool akit_pick_place::executeAxisCartesianMotion(bool direction, double cartesia
   }
   else
   {
-    ROS_ERROR("Failed to compute cartesian path");
+    ROS_ERROR_STREAM("Failed to compute cartesian path" << cartesian_path_msg.response.error_code);
     return false;
     exit(1);
   }
@@ -1340,15 +1370,12 @@ bool akit_pick_place::pick(moveit_msgs::CollisionObject object_)
     exit(1);
   }
 
-  // temporary until joint measurements for gripper are implemented from iosb
-  visual_tools->prompt("please close gripper then press next");
-
   // closing gripper
-  /*if (!this->closeGripper(object_)){
+  if (!this->closeGripper(object_)){
     ROS_ERROR("Failed to close Gripper");
     return false;
     exit(1);
-  }*/
+  }
 
   if (!this->attachCollisionObject(object_))
   {
@@ -1424,7 +1451,7 @@ bool akit_pick_place::place(moveit_msgs::CollisionObject object_)
   ros::Duration(1.0).sleep();
 
   // temporary
-  visual_tools->prompt("when you want to open gripper press next");
+  //visual_tools->prompt("when you want to open gripper press next");
 
   // opening gripper
   if (!this->openGripper())
